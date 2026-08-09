@@ -1,0 +1,257 @@
+:: StoryTitle
+The Fox and the Crow: A Day in Loop
+
+:: StoryData
+{
+    "ifid": "7A4F23F7-9B8B-4E75-9E84-3A626B435833",
+    "format": "SugarCube",
+    "format-version": "2.30.0",
+    "start": "Morning",
+    "zoom": 1
+}
+
+:: StoryInit
+<<set $loopCount = 0>>
+
+:: StoryDisplay [nobr]
+<header class="story-header">
+    <p class="eyebrow">THE FOX AND THE CROW</p>
+    <p class="loop-counter">MORNING <<print $loopCount + 1>></p>
+</header>
+
+:: StoryStylesheet [stylesheet]
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap");
+
+:root {
+    color-scheme: dark;
+    --ink: #f8f0dc;
+    --muted: #c6b99f;
+    --accent: #f1b24a;
+    --accent-strong: #ffd07d;
+    --panel: rgba(28, 25, 21, 0.88);
+    --line: rgba(241, 178, 74, 0.28);
+}
+
+html {
+    min-height: 100%;
+    background: #151915;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 50% 8%, rgba(214, 145, 48, 0.18), transparent 34rem),
+        linear-gradient(180deg, #273128 0%, #151915 62%, #101210 100%);
+    font-family: "Noto Serif", Georgia, serif;
+}
+
+body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.26;
+    background-image:
+        linear-gradient(115deg, transparent 49%, rgba(255, 255, 255, 0.035) 50%, transparent 51%),
+        linear-gradient(25deg, transparent 49%, rgba(255, 255, 255, 0.025) 50%, transparent 51%);
+    background-size: 46px 46px, 62px 62px;
+}
+
+#ui-bar {
+    display: none;
+}
+
+#story {
+    margin-left: 0;
+}
+
+#passages {
+    width: min(42rem, calc(100% - 2.5rem));
+    margin: 0 auto;
+    padding: 9vh 0 12vh;
+}
+
+.story-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.story-header p {
+    margin: 0;
+}
+
+.eyebrow {
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+}
+
+.loop-counter {
+    color: var(--muted);
+    font-family: system-ui, sans-serif;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+}
+
+.passage {
+    min-height: 22rem;
+    padding: clamp(1.5rem, 5vw, 3.5rem);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    background: var(--panel);
+    box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.3);
+}
+
+.passage h1 {
+    margin: 0 0 1.7rem;
+    color: var(--accent-strong);
+    font-size: clamp(1.75rem, 5vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.passage p {
+    margin: 0 0 1.1rem;
+    color: var(--ink);
+    font-size: clamp(1rem, 2.8vw, 1.14rem);
+    line-height: 1.85;
+}
+
+.memory {
+    margin: 1.5rem 0;
+    padding: 0.8rem 1rem;
+    border-left: 2px solid var(--accent);
+    color: var(--muted);
+    background: rgba(241, 178, 74, 0.07);
+    font-size: 0.92rem;
+    line-height: 1.7;
+}
+
+.choice-label {
+    margin-top: 2.5rem !important;
+    color: var(--muted) !important;
+    font-family: system-ui, sans-serif;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.passage a.link-internal,
+.passage .link-internal {
+    display: block;
+    margin-top: 0.7rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid rgba(241, 178, 74, 0.52);
+    border-radius: 2px;
+    color: var(--accent-strong);
+    background: rgba(241, 178, 74, 0.08);
+    font-family: system-ui, sans-serif;
+    font-size: 0.98rem;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.passage a.link-internal:hover,
+.passage a.link-internal:focus-visible {
+    border-color: var(--accent-strong);
+    color: #17130d;
+    background: var(--accent-strong);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 520px) {
+    #passages {
+        width: min(100% - 1.25rem, 42rem);
+        padding-top: 1.5rem;
+    }
+
+    .passage {
+        min-height: 70vh;
+        padding: 1.4rem;
+    }
+}
+
+:: Morning
+<h1>Another Morning</h1>
+
+You wake at the edge of a forest clearing. Your stomach is hollow—you have not found a bite to eat in three days.
+
+Morning light filters through the leaves. High on a branch sits a crow with a piece of cheese in her beak.
+
+<<if $loopCount > 0>>
+<div class="memory">The scene is strangely familiar. The tree, the crow, the cheese—even the sound of the wind in the leaves is exactly as you remember it.</div>
+<</if>>
+
+<p class="choice-label">What will you do?</p>
+
+[[Watch the crow in the tree->Under the Tree]]
+
+:: Under the Tree
+<h1>Under the Tree</h1>
+
+You step beneath the branch and look up. The cheese is held tight in the crow's closed beak, its pale edge catching the morning light.
+
+If you can make her open her beak, the cheese will fall.
+
+<p class="choice-label">An idea comes to you.</p>
+
+[[Begin by praising her feathers->Flattery]]
+
+:: Flattery
+<h1>Beautiful Feathers</h1>
+
+“Good morning, Miss Crow,” you say with your most sincere smile. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
+
+The crow hears your praise and lifts her chest proudly. She still holds the cheese tight, but now she cannot look away.
+
+<p class="choice-label">One last step.</p>
+
+[[Ask her to sing for you->The Song]]
+
+:: The Song
+<h1>The Finest Voice in the Forest</h1>
+
+“A crow so beautiful must also have the finest voice in the forest,” you say. “Would you sing a song and let me hear it?”
+
+The crow raises her head. She can hardly wait to prove that your praise is true.
+
+<p class="choice-label">You wait below.</p>
+
+[[Wait for her to open her beak->The Cheese Falls]]
+
+:: The Cheese Falls
+<h1>The Cheese</h1>
+
+“Caw—”
+
+The moment the crow opens her beak, the cheese tumbles from the branch. You step forward and catch it neatly.
+
+The familiar trick has worked. Your hunger fades, and you finally have the thing you have pursued since morning.
+
+<p class="choice-label">The story should end here.</p>
+
+[[Eat the cheese and face the evening->Evening]]
+
+:: Evening
+<h1>The Day Ends</h1>
+
+You have the cheese. By every rule you know, that should mean you have won.
+
+But as the sun sinks behind the trees, the colors drain from the clearing. Shadows slide back to their old places. The wind moves backward through the leaves, and the fullness in your stomach disappears.
+
+Somewhere above, you hear the beat of a crow's wings. When you open your eyes, you know you will see the same tree, the same crow, and the same piece of cheese.
+
+<p class="choice-label">The day is not ready to let you go.</p>
+
+<<link "The same day, once more">>
+    <<set $loopCount += 1>>
+    <<goto "Morning">>
+<</link>>
+
