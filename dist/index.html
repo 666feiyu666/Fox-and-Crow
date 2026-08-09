@@ -100,7 +100,7 @@ var saveAs=saveAs||navigator.msSaveBlob&&navigator.msSaveBlob.bind(navigator)||f
 		<div id="init-lacking">Your browser lacks required capabilities. Please upgrade it or switch to another to continue.</div>
 		<div id="init-loading"><div>Loading&hellip;</div></div>
 	</div>
-	<!-- UUID://7A4F23F7-9B8B-4E75-9E84-3A626B435833// --><tw-storydata name="The Fox and the Crow: A Day in Loop" startnode="3" creator="Tweego" creator-version="2.1.1+81d1d71" ifid="7A4F23F7-9B8B-4E75-9E84-3A626B435833" zoom="1" format="SugarCube" format-version="2.30.0" options="" hidden><style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap");
+	<!-- UUID://7A4F23F7-9B8B-4E75-9E84-3A626B435833// --><tw-storydata name="The Fox and the Crow: A Day in Loop" startnode="4" creator="Tweego" creator-version="2.1.1+81d1d71" ifid="7A4F23F7-9B8B-4E75-9E84-3A626B435833" zoom="1" format="SugarCube" format-version="2.30.0" options="" hidden><style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap");
 
 :root {
     color-scheme: dark;
@@ -246,6 +246,72 @@ body::before {
     transform: translateY(-1px);
 }
 
+.ai-action-panel {
+    margin-top: 2.75rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+}
+
+.ai-action-panel h2 {
+    margin: 0 0 0.65rem;
+    color: var(--accent-strong);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.ai-action-help,
+.ai-action-status {
+    color: var(--muted) !important;
+    font-family: system-ui, sans-serif;
+    font-size: 0.88rem !important;
+    line-height: 1.55 !important;
+}
+
+.ai-action-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 6.5rem;
+    margin-top: 0.35rem;
+    padding: 0.9rem 1rem;
+    resize: vertical;
+    border: 1px solid rgba(241, 178, 74, 0.4);
+    border-radius: 2px;
+    color: var(--ink);
+    background: rgba(8, 10, 8, 0.55);
+    font: 0.98rem/1.55 system-ui, sans-serif;
+}
+
+.ai-action-input:focus {
+    outline: 2px solid rgba(255, 208, 125, 0.35);
+    border-color: var(--accent-strong);
+}
+
+.ai-action-submit {
+    margin-top: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: #17130d;
+    background: var(--accent);
+    font: 600 0.92rem system-ui, sans-serif;
+    cursor: pointer;
+}
+
+.ai-action-submit:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.ai-action-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-left: 2px solid var(--accent);
+    color: var(--ink);
+    background: rgba(241, 178, 74, 0.07);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+
 @media (max-width: 520px) {
     #passages {
         width: min(100% - 1.25rem, 42rem);
@@ -256,10 +322,70 @@ body::before {
         min-height: 70vh;
         padding: 1.4rem;
     }
-}</style><script role="script" id="twine-user-script" type="text/twine-javascript"></script><tw-passagedata pid="1" name="StoryInit" tags="" position="100,100" size="100,100">&lt;&lt;set $loopCount = 0&gt;&gt;</tw-passagedata><tw-passagedata pid="2" name="StoryDisplay" tags="nobr" position="225,100" size="100,100">&lt;header class=&quot;story-header&quot;&gt;
+}</style><script role="script" id="twine-user-script" type="text/twine-javascript">async function submitPlayerAction(form) {
+    var input = form.querySelector(".ai-action-input");
+    var button = form.querySelector(".ai-action-submit");
+    var status = form.querySelector(".ai-action-status");
+    var result = form.querySelector(".ai-action-result");
+    var action = input.value.trim();
+
+    if (!action) {
+        status.textContent = "Enter an action first.";
+        return;
+    }
+
+    button.disabled = true;
+    status.textContent = "The forest considers your action...";
+    result.hidden = true;
+
+    try {
+        if (window.location.protocol === "file:") {
+            throw new Error("Start the local story server before using free-text actions.");
+        }
+
+        var response = await fetch("/api/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                passage: State.passage,
+                loopCount: State.variables.loopCount || 0,
+                action: action
+            })
+        });
+        var body = await response.json();
+
+        if (!response.ok) {
+            throw new Error(body.error || "The story server could not process that action.");
+        }
+
+        result.textContent = body.narration;
+        result.hidden = false;
+        status.textContent = "DeepSeek has answered.";
+    }
+    catch (error) {
+        status.textContent = error.message || "The story server could not be reached.";
+    }
+    finally {
+        button.disabled = false;
+    }
+};
+
+$(document).on("submit", ".ai-action-form", function (event) {
+    event.preventDefault();
+    submitPlayerAction(this);
+});</script><tw-passagedata pid="1" name="StoryInit" tags="" position="100,100" size="100,100">&lt;&lt;set $loopCount = 0&gt;&gt;</tw-passagedata><tw-passagedata pid="2" name="StoryDisplay" tags="nobr" position="225,100" size="100,100">&lt;header class=&quot;story-header&quot;&gt;
     &lt;p class=&quot;eyebrow&quot;&gt;THE FOX AND THE CROW&lt;/p&gt;
     &lt;p class=&quot;loop-counter&quot;&gt;MORNING &lt;&lt;print $loopCount + 1&gt;&gt;&lt;/p&gt;
-&lt;/header&gt;</tw-passagedata><tw-passagedata pid="3" name="Morning" tags="" position="350,100" size="100,100">&lt;h1&gt;Another Morning&lt;/h1&gt;
+&lt;/header&gt;</tw-passagedata><tw-passagedata pid="3" name="PassageFooter" tags="" position="350,100" size="100,100">&lt;section class=&quot;ai-action-panel&quot;&gt;
+    &lt;h2&gt;Try another way&lt;/h2&gt;
+    &lt;p class=&quot;ai-action-help&quot;&gt;Describe a different action for the fox. DeepSeek will narrate its immediate consequence without changing the fixed path.&lt;/p&gt;
+    &lt;form class=&quot;ai-action-form&quot;&gt;
+        &lt;textarea class=&quot;ai-action-input&quot; maxlength=&quot;500&quot; required placeholder=&quot;For example: I offer the crow a trade.&quot;&gt;&lt;/textarea&gt;
+        &lt;button class=&quot;ai-action-submit&quot; type=&quot;submit&quot;&gt;Ask the story&lt;/button&gt;
+        &lt;p class=&quot;ai-action-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;
+        &lt;div class=&quot;ai-action-result&quot; aria-live=&quot;polite&quot; hidden&gt;&lt;/div&gt;
+    &lt;/form&gt;
+&lt;/section&gt;</tw-passagedata><tw-passagedata pid="4" name="Morning" tags="" position="475,100" size="100,100">&lt;h1&gt;Another Morning&lt;/h1&gt;
 
 You wake at the edge of a forest clearing. Your stomach is hollow—you have not found a bite to eat in three days.
 
@@ -271,7 +397,7 @@ Morning light filters through the leaves. High on a branch sits a crow with a pi
 
 &lt;p class=&quot;choice-label&quot;&gt;What will you do?&lt;/p&gt;
 
-[[Watch the crow in the tree-&gt;Under the Tree]]</tw-passagedata><tw-passagedata pid="4" name="Under the Tree" tags="" position="475,100" size="100,100">&lt;h1&gt;Under the Tree&lt;/h1&gt;
+[[Watch the crow in the tree-&gt;Under the Tree]]</tw-passagedata><tw-passagedata pid="5" name="Under the Tree" tags="" position="600,100" size="100,100">&lt;h1&gt;Under the Tree&lt;/h1&gt;
 
 You step beneath the branch and look up. The cheese is held tight in the crow&#39;s closed beak, its pale edge catching the morning light.
 
@@ -279,7 +405,7 @@ If you can make her open her beak, the cheese will fall.
 
 &lt;p class=&quot;choice-label&quot;&gt;An idea comes to you.&lt;/p&gt;
 
-[[Begin by praising her feathers-&gt;Flattery]]</tw-passagedata><tw-passagedata pid="5" name="Flattery" tags="" position="600,100" size="100,100">&lt;h1&gt;Beautiful Feathers&lt;/h1&gt;
+[[Begin by praising her feathers-&gt;Flattery]]</tw-passagedata><tw-passagedata pid="6" name="Flattery" tags="" position="725,100" size="100,100">&lt;h1&gt;Beautiful Feathers&lt;/h1&gt;
 
 “Good morning, Miss Crow,” you say with your most sincere smile. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
 
@@ -287,7 +413,7 @@ The crow hears your praise and lifts her chest proudly. She still holds the chee
 
 &lt;p class=&quot;choice-label&quot;&gt;One last step.&lt;/p&gt;
 
-[[Ask her to sing for you-&gt;The Song]]</tw-passagedata><tw-passagedata pid="6" name="The Song" tags="" position="725,100" size="100,100">&lt;h1&gt;The Finest Voice in the Forest&lt;/h1&gt;
+[[Ask her to sing for you-&gt;The Song]]</tw-passagedata><tw-passagedata pid="7" name="The Song" tags="" position="850,100" size="100,100">&lt;h1&gt;The Finest Voice in the Forest&lt;/h1&gt;
 
 “A crow so beautiful must also have the finest voice in the forest,” you say. “Would you sing a song and let me hear it?”
 
@@ -295,7 +421,7 @@ The crow raises her head. She can hardly wait to prove that your praise is true.
 
 &lt;p class=&quot;choice-label&quot;&gt;You wait below.&lt;/p&gt;
 
-[[Wait for her to open her beak-&gt;The Cheese Falls]]</tw-passagedata><tw-passagedata pid="7" name="The Cheese Falls" tags="" position="850,100" size="100,100">&lt;h1&gt;The Cheese&lt;/h1&gt;
+[[Wait for her to open her beak-&gt;The Cheese Falls]]</tw-passagedata><tw-passagedata pid="8" name="The Cheese Falls" tags="" position="975,100" size="100,100">&lt;h1&gt;The Cheese&lt;/h1&gt;
 
 “Caw—”
 
@@ -305,7 +431,7 @@ The familiar trick has worked. Your hunger fades, and you finally have the thing
 
 &lt;p class=&quot;choice-label&quot;&gt;The story should end here.&lt;/p&gt;
 
-[[Eat the cheese and face the evening-&gt;Evening]]</tw-passagedata><tw-passagedata pid="8" name="Evening" tags="" position="975,100" size="100,100">&lt;h1&gt;The Day Ends&lt;/h1&gt;
+[[Eat the cheese and face the evening-&gt;Evening]]</tw-passagedata><tw-passagedata pid="9" name="Evening" tags="" position="1100,100" size="100,100">&lt;h1&gt;The Day Ends&lt;/h1&gt;
 
 You have the cheese. By every rule you know, that should mean you have won.
 
@@ -313,9 +439,9 @@ But as the sun sinks behind the trees, the colors drain from the clearing. Shado
 
 Somewhere above, you hear the beat of a crow&#39;s wings. When you open your eyes, you know you will see the same tree, the same crow, and the same piece of cheese.
 
-&lt;p class=&quot;choice-label&quot;&gt;The day is not ready to let you go.&lt;/p&gt;
+&lt;p class=&quot;choice-label&quot;&gt;Wait...&lt;/p&gt;
 
-&lt;&lt;link &quot;The same day, once more&quot;&gt;&gt;
+&lt;&lt;link &quot;The day is not ready to let you go.&quot;&gt;&gt;
     &lt;&lt;set $loopCount += 1&gt;&gt;
     &lt;&lt;goto &quot;Morning&quot;&gt;&gt;
 &lt;&lt;/link&gt;&gt;</tw-passagedata></tw-storydata>

@@ -1,4 +1,7 @@
 .tools/
+__pycache__/
+*.py[cod]
+.env
+.env.local
 *.tmp
 .DS_Store
-

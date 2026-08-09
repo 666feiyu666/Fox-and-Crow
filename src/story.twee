@@ -166,6 +166,72 @@ body::before {
     transform: translateY(-1px);
 }
 
+.ai-action-panel {
+    margin-top: 2.75rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+}
+
+.ai-action-panel h2 {
+    margin: 0 0 0.65rem;
+    color: var(--accent-strong);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.ai-action-help,
+.ai-action-status {
+    color: var(--muted) !important;
+    font-family: system-ui, sans-serif;
+    font-size: 0.88rem !important;
+    line-height: 1.55 !important;
+}
+
+.ai-action-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 6.5rem;
+    margin-top: 0.35rem;
+    padding: 0.9rem 1rem;
+    resize: vertical;
+    border: 1px solid rgba(241, 178, 74, 0.4);
+    border-radius: 2px;
+    color: var(--ink);
+    background: rgba(8, 10, 8, 0.55);
+    font: 0.98rem/1.55 system-ui, sans-serif;
+}
+
+.ai-action-input:focus {
+    outline: 2px solid rgba(255, 208, 125, 0.35);
+    border-color: var(--accent-strong);
+}
+
+.ai-action-submit {
+    margin-top: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: #17130d;
+    background: var(--accent);
+    font: 600 0.92rem system-ui, sans-serif;
+    cursor: pointer;
+}
+
+.ai-action-submit:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.ai-action-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-left: 2px solid var(--accent);
+    color: var(--ink);
+    background: rgba(241, 178, 74, 0.07);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+
 @media (max-width: 520px) {
     #passages {
         width: min(100% - 1.25rem, 42rem);
@@ -177,6 +243,72 @@ body::before {
         padding: 1.4rem;
     }
 }
+
+:: StoryScript [script]
+async function submitPlayerAction(form) {
+    var input = form.querySelector(".ai-action-input");
+    var button = form.querySelector(".ai-action-submit");
+    var status = form.querySelector(".ai-action-status");
+    var result = form.querySelector(".ai-action-result");
+    var action = input.value.trim();
+
+    if (!action) {
+        status.textContent = "Enter an action first.";
+        return;
+    }
+
+    button.disabled = true;
+    status.textContent = "The forest considers your action...";
+    result.hidden = true;
+
+    try {
+        if (window.location.protocol === "file:") {
+            throw new Error("Start the local story server before using free-text actions.");
+        }
+
+        var response = await fetch("/api/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                passage: State.passage,
+                loopCount: State.variables.loopCount || 0,
+                action: action
+            })
+        });
+        var body = await response.json();
+
+        if (!response.ok) {
+            throw new Error(body.error || "The story server could not process that action.");
+        }
+
+        result.textContent = body.narration;
+        result.hidden = false;
+        status.textContent = "DeepSeek has answered.";
+    }
+    catch (error) {
+        status.textContent = error.message || "The story server could not be reached.";
+    }
+    finally {
+        button.disabled = false;
+    }
+};
+
+$(document).on("submit", ".ai-action-form", function (event) {
+    event.preventDefault();
+    submitPlayerAction(this);
+});
+
+:: PassageFooter
+<section class="ai-action-panel">
+    <h2>Try another way</h2>
+    <p class="ai-action-help">Describe a different action for the fox. DeepSeek will narrate its immediate consequence without changing the fixed path.</p>
+    <form class="ai-action-form">
+        <textarea class="ai-action-input" maxlength="500" required placeholder="For example: I offer the crow a trade."></textarea>
+        <button class="ai-action-submit" type="submit">Ask the story</button>
+        <p class="ai-action-status" role="status" aria-live="polite"></p>
+        <div class="ai-action-result" aria-live="polite" hidden></div>
+    </form>
+</section>
 
 :: Morning
 <h1>Another Morning</h1>
@@ -248,10 +380,9 @@ But as the sun sinks behind the trees, the colors drain from the clearing. Shado
 
 Somewhere above, you hear the beat of a crow's wings. When you open your eyes, you know you will see the same tree, the same crow, and the same piece of cheese.
 
-<p class="choice-label">The day is not ready to let you go.</p>
+<p class="choice-label">Wait...</p>
 
-<<link "The same day, once more">>
+<<link "The day is not ready to let you go.">>
     <<set $loopCount += 1>>
     <<goto "Morning">>
 <</link>>
-
