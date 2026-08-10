@@ -67,11 +67,11 @@ API Key 只存在于本地后端进程和被忽略的 `.env.local` 中，不会�
 | `src/story.twee` | 固定 Passage、界面样式、自由输入、生成 Passage、循环与 remembered choice | 已接入可玩流程 |
 | `dist/index.html` | Tweego 编译后的可玩文件 | 已生成 |
 | `backend/server.py` | 本地 HTTP 服务与 DeepSeek 代理 | 已接入可玩流程 |
-| `backend/game_state.py` | 狐狸、乌鸦、关系、地点、物品、时间和循环的不可变状态规则 | 已实现并测试，尚未接入可玩流程 |
-| `backend/action_resolution.py` | DeepSeek 状态结算提案的强类型协议与状态感知校验 | 已实现并测试，尚未接入可玩流程 |
+| `backend/game_system/state.py` | 狐狸、乌鸦、关系、地点、物品、时间和循环的不可变状态规则 | 已实现并测试，尚未接入可玩流程 |
+| `backend/game_agent/effects.py` | DeepSeek 状态结算提案的强类型协议与状态感知校验 | 已实现并测试，尚未接入可玩流程 |
 | `tests/test_server.py` | HTTP 与 DeepSeek 请求契约测试 | 已验证 |
-| `tests/test_game_state.py` | 时间、饥饿、友谊、所有权与循环重置测试 | 已验证 |
-| `tests/test_action_resolution.py` | Agent effect 越权、越界和世界一致性测试 | 已验证 |
+| `tests/test_game_system.py` | 时间、饥饿、友谊、所有权与循环重置测试 | 已验证 |
+| `tests/test_game_agent_effects.py` | Agent effect 越权、越界和世界一致性测试 | 已验证 |
 
 “已经存在代码”和“已经进入玩家流程”在本文中明确分开，避免把基础设施误报为可玩功能。
 

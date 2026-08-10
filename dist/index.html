@@ -696,14 +696,14 @@ function syncPlayerState(playerState) {
     State.variables.foxMemories = playerState.memories || [];
 }
 
-async function ensureNodeTwoSession(signal) {
-    if (State.variables.nodeTwoSessionId) {
-        return State.variables.nodeTwoSessionId;
+async function ensureGameSession(signal) {
+    if (State.variables.gameSessionId) {
+        return State.variables.gameSessionId;
     }
     var created = await postStoryJson("/api/session", {
         loopCount: Math.max(3, State.variables.loopCount || 3)
     }, signal);
-    State.variables.nodeTwoSessionId = created.sessionId;
+    State.variables.gameSessionId = created.sessionId;
     syncPlayerState(created.playerState);
     return created.sessionId;
 }
@@ -727,7 +727,7 @@ async function submitPlayerAction(form) {
     activeStoryRequestController = requestController;
 
     try {
-        var sessionId = await ensureNodeTwoSession(requestController.signal);
+        var sessionId = await ensureGameSession(requestController.signal);
         var body = await postStoryJson("/api/turn", {
             sessionId: sessionId,
             action: action
@@ -741,7 +741,7 @@ async function submitPlayerAction(form) {
             story: body.narration
         });
         syncPlayerState(body.playerState);
-        State.variables.nodeTwoTurn = {
+        State.variables.currentTurn = {
             action: action,
             narration: body.narration,
             outcome: body.outcome
@@ -956,7 +956,7 @@ async function restartStory() {
         activeStoryRequestController.abort();
         activeStoryRequestController = null;
     }
-    var sessionId = State.variables.nodeTwoSessionId;
+    var sessionId = State.variables.gameSessionId;
     if (sessionId && window.location.protocol !== "file:") {
         var cleanupController = new AbortController();
         var cleanupTimeout = window.setTimeout(function () {
@@ -1000,7 +1000,7 @@ function renderDynamicResult() {
     if (State.passage !== "Dynamic Result") {
         return;
     }
-    var turn = State.variables.nodeTwoTurn;
+    var turn = State.variables.currentTurn;
     if (!turn) {
         return;
     }
@@ -1055,8 +1055,8 @@ $(document).on(":passagedisplay", function () {
 });</script><tw-passagedata pid="1" name="StoryInit" tags="" position="100,100" size="100,100">&lt;&lt;set $loopCount = 0&gt;&gt;
 &lt;&lt;set $learnedActions = {}&gt;&gt;
 &lt;&lt;set $generatedTurn = null&gt;&gt;
-&lt;&lt;set $nodeTwoSessionId = null&gt;&gt;
-&lt;&lt;set $nodeTwoTurn = null&gt;&gt;
+&lt;&lt;set $gameSessionId = null&gt;&gt;
+&lt;&lt;set $currentTurn = null&gt;&gt;
 &lt;&lt;set $foxMemories = []&gt;&gt;
 &lt;&lt;set $storyLog = []&gt;&gt;
 &lt;&lt;set $pendingStoryAction = null&gt;&gt;</tw-passagedata><tw-passagedata pid="2" name="PassageHeader" tags="nobr" position="225,100" size="100,100">&lt;header class=&quot;story-header&quot;&gt;
@@ -1116,7 +1116,7 @@ $(document).on(":passagedisplay", function () {
 &lt;div class=&quot;generated-action-narration&quot;&gt;&lt;/div&gt;
 &lt;div class=&quot;outcome-banner&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
 
-&lt;&lt;if $nodeTwoTurn and $nodeTwoTurn.outcome is &quot;loop_escaped&quot;&gt;&gt;
+&lt;&lt;if $currentTurn and $currentTurn.outcome is &quot;loop_escaped&quot;&gt;&gt;
     [[Step into the new tomorrow-&gt;New Tomorrow]]
 &lt;&lt;else&gt;&gt;
     [[Continue-&gt;Dynamic Morning]]

@@ -26,8 +26,8 @@
 | 节点一：自由输入 | 自由行动通过后端获得 DeepSeek 回应 | 已完成 | `src/story.twee`、`backend/server.py` | HTTP 单元测试；真实 API；浏览器流程 | 本地服务 | 依赖 DeepSeek 可用性与本地 Key | 保持失败恢复 |
 | 节点一：生成 Passage | 玩家输入与结果进入独立 `A New Turn` | 已完成 | `src/story.twee` | 构建；JavaScript 语法；浏览器端到端 | 本地浏览器 | 当前为一个动态 Passage 模板 | 保持回归 |
 | 节点一：remembered choice | 有意义行动在相关场景成为 choice | 已完成 | `src/story.twee`、`backend/server.py` | Prompt 契约测试；真实示例；离线重放 | 当前游戏会话 | 尚未跨新游戏持久化 | 保持去重与场景归属 |
-| 节点一基础：权威状态 | 时间、饥饿、关系、物品与循环规则 | 已完成 | `backend/game_state.py` | 11 项单元测试 | Python 本地进程 | 尚未接入可玩流程 | 本范围不安排后续实现 |
-| 节点一基础：Agent 提案边界 | 强类型 effect 与状态感知校验 | 已完成 | `backend/action_resolution.py` | 12 项单元测试 | Python 本地进程 | 尚未应用到权威状态 | 本范围不安排后续实现 |
+| 节点一基础：权威状态 | 时间、饥饿、关系、物品与循环规则 | 已完成 | `backend/game_system/state.py` | 11 项单元测试 | Python 本地进程 | 尚未接入可玩流程 | 本范围不安排后续实现 |
+| 节点一基础：Agent 提案边界 | 强类型 effect 与状态感知校验 | 已完成 | `backend/game_agent/effects.py` | 12 项单元测试 | Python 本地进程 | 尚未应用到权威状态 | 本范围不安排后续实现 |
 
 ## 当前风险与偏差
 

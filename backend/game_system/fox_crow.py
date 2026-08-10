@@ -2,31 +2,27 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import Enum
-from threading import RLock
 from typing import Any
-from uuid import uuid4
 
 try:
-    from backend.game_state import (
+    from backend.game_system.state import (
         DayOutcome,
         GameState,
         ItemState,
         MAX_FOX_HUNGER,
         RelationshipState,
         advance_time,
-        initial_game_state,
         remember_fox,
         reset_for_next_loop,
     )
 except ModuleNotFoundError:  # Support direct execution through backend/server.py.
-    from game_state import (  # type: ignore[no-redef]
+    from game_system.state import (  # type: ignore[no-redef]
         DayOutcome,
         GameState,
         ItemState,
         MAX_FOX_HUNGER,
         RelationshipState,
         advance_time,
-        initial_game_state,
         remember_fox,
         reset_for_next_loop,
     )
@@ -38,18 +34,18 @@ NECKLACE_FOUND_MEMORY = "You found the crow's necklace in the bushes."
 NECKLACE_RETURNED_MEMORY = "You returned the necklace, and the crow answered your help with friendship."
 
 
-class NodeTwoError(ValueError):
+class FoxCrowRuleError(ValueError):
     pass
 
 
-class NodeTwoIntent(str, Enum):
+class FoxCrowIntent(str, Enum):
     ASK_PROBLEM = "ask_problem"
     SEARCH_NECKLACE = "search_necklace"
     RETURN_NECKLACE = "return_necklace"
     OTHER = "other"
 
 
-class NodeTwoEvent(str, Enum):
+class FoxCrowEvent(str, Enum):
     CROW_REVEALS_PROBLEM = "crow_reveals_problem"
     FOX_LEARNS_SEARCH_LOCATION = "fox_learns_search_location"
     NECKLACE_ALREADY_HELD = "necklace_already_held"
@@ -66,84 +62,89 @@ class NodeTwoEvent(str, Enum):
     DAY_REWINDS = "day_rewinds"
 
 
-NODE_TWO_EVENT_DESCRIPTION = {
-    NodeTwoEvent.CROW_REVEALS_PROBLEM: (
+FOX_CROW_EVENT_DESCRIPTION = {
+    FoxCrowEvent.CROW_REVEALS_PROBLEM: (
         "The crow admits that a treasured necklace fell into the bushes."
     ),
-    NodeTwoEvent.FOX_LEARNS_SEARCH_LOCATION: "You now know where to search.",
-    NodeTwoEvent.NECKLACE_ALREADY_HELD: (
+    FoxCrowEvent.FOX_LEARNS_SEARCH_LOCATION: "You now know where to search.",
+    FoxCrowEvent.NECKLACE_ALREADY_HELD: (
         "The necklace is already safe in your possession."
     ),
-    NodeTwoEvent.NECKLACE_ALREADY_RETURNED: (
+    FoxCrowEvent.NECKLACE_ALREADY_RETURNED: (
         "The necklace has already been returned to the crow."
     ),
-    NodeTwoEvent.FOX_SEARCHES_BUSHES: "You search through the bushes.",
-    NodeTwoEvent.SEARCH_INCONCLUSIVE: "The search turns up nothing conclusive.",
-    NodeTwoEvent.FOX_FINDS_NECKLACE: (
+    FoxCrowEvent.FOX_SEARCHES_BUSHES: "You search through the bushes.",
+    FoxCrowEvent.SEARCH_INCONCLUSIVE: "The search turns up nothing conclusive.",
+    FoxCrowEvent.FOX_FINDS_NECKLACE: (
         "You follow the clue into the bushes and find the crow's necklace."
     ),
-    NodeTwoEvent.FOX_CARRIES_NECKLACE: "You now carry the necklace.",
-    NodeTwoEvent.RETURN_REQUIRES_POSSESSION: (
+    FoxCrowEvent.FOX_CARRIES_NECKLACE: "You now carry the necklace.",
+    FoxCrowEvent.RETURN_REQUIRES_POSSESSION: (
         "You cannot return something you do not possess."
     ),
-    NodeTwoEvent.FOX_RETURNS_NECKLACE: "You return the necklace to the crow.",
-    NodeTwoEvent.CROW_RECIPROCATES_FRIENDSHIP: (
+    FoxCrowEvent.FOX_RETURNS_NECKLACE: "You return the necklace to the crow.",
+    FoxCrowEvent.CROW_RECIPROCATES_FRIENDSHIP: (
         "The crow shares her food in return, and your mutual trust becomes friendship."
     ),
-    NodeTwoEvent.DAY_ENDS_WITHOUT_REWIND: (
+    FoxCrowEvent.DAY_ENDS_WITHOUT_REWIND: (
         "The day reaches its end without rewinding."
     ),
-    NodeTwoEvent.TIME_PASSES_HUNGRIER: "Time passes, and you feel hungrier.",
-    NodeTwoEvent.DAY_REWINDS: (
+    FoxCrowEvent.TIME_PASSES_HUNGRIER: "Time passes, and you feel hungrier.",
+    FoxCrowEvent.DAY_REWINDS: (
         "The day rewinds to the same morning, while you keep what you learned."
     ),
 }
 
 
 @dataclass(frozen=True)
-class DmDecision:
-    intent: NodeTwoIntent
+class GameAgentDecision:
+    intent: FoxCrowIntent
     time_cost: int
 
 
 @dataclass(frozen=True)
-class NodeTwoResolution:
+class FoxCrowResolution:
     state: GameState
     outcome: DayOutcome
-    intent: NodeTwoIntent
-    events: tuple[NodeTwoEvent, ...]
+    intent: FoxCrowIntent
+    events: tuple[FoxCrowEvent, ...]
 
 
-def parse_dm_decision(payload: Any, state: GameState) -> DmDecision:
+def parse_game_agent_decision(payload: Any, state: GameState) -> GameAgentDecision:
     if not isinstance(payload, dict) or set(payload) != {"intent", "timeCost"}:
-        raise NodeTwoError("DM decision must contain only intent and timeCost.")
+        raise FoxCrowRuleError("Game Agent decision must contain only intent and timeCost.")
 
     try:
-        intent = NodeTwoIntent(payload["intent"])
+        intent = FoxCrowIntent(payload["intent"])
     except (TypeError, ValueError) as error:
-        supported = ", ".join(intent.value for intent in NodeTwoIntent)
-        raise NodeTwoError(f"Unsupported DM intent; expected one of: {supported}.") from error
+        supported = ", ".join(intent.value for intent in FoxCrowIntent)
+        raise FoxCrowRuleError(
+            f"Unsupported Game Agent intent; expected one of: {supported}."
+        ) from error
 
     time_cost = payload["timeCost"]
     remaining = state.day.world.remaining_time_units
     if isinstance(time_cost, bool) or not isinstance(time_cost, int):
-        raise NodeTwoError("timeCost must be an integer.")
+        raise FoxCrowRuleError("timeCost must be an integer.")
     if not 1 <= time_cost <= remaining:
-        raise NodeTwoError("timeCost must fit within the time remaining today.")
-    return DmDecision(intent=intent, time_cost=time_cost)
+        raise FoxCrowRuleError("timeCost must fit within the time remaining today.")
+    return GameAgentDecision(intent=intent, time_cost=time_cost)
 
 
-def resolve_node_two_turn(state: GameState, decision: DmDecision) -> NodeTwoResolution:
-    if decision.intent is NodeTwoIntent.ASK_PROBLEM:
+def resolve_fox_crow_turn(
+    state: GameState,
+    decision: GameAgentDecision,
+) -> FoxCrowResolution:
+    if decision.intent is FoxCrowIntent.ASK_PROBLEM:
         return _ask_about_problem(state, decision)
-    if decision.intent is NodeTwoIntent.SEARCH_NECKLACE:
+    if decision.intent is FoxCrowIntent.SEARCH_NECKLACE:
         return _search_for_necklace(state, decision)
-    if decision.intent is NodeTwoIntent.RETURN_NECKLACE:
+    if decision.intent is FoxCrowIntent.RETURN_NECKLACE:
         return _return_necklace(state, decision)
     return _other_action(state, decision)
 
 
-def state_view(state: GameState) -> dict[str, Any]:
+def game_agent_view(state: GameState) -> dict[str, Any]:
     necklace = _world_item(state, "crow_necklace")
     if necklace.owner == "fox":
         necklace_status = "found"
@@ -188,7 +189,7 @@ def player_view(state: GameState) -> dict[str, Any]:
     }
 
 
-def narrative_view(state: GameState) -> dict[str, Any]:
+def story_agent_view(state: GameState) -> dict[str, Any]:
     """Describe only the scene, condition, and knowledge available to the fox."""
     hunger = state.day.fox.hunger
     if hunger >= 90:
@@ -211,53 +212,21 @@ def narrative_view(state: GameState) -> dict[str, Any]:
     }
 
 
-def public_event_view(resolution: NodeTwoResolution) -> list[dict[str, str]]:
+def public_event_view(resolution: FoxCrowResolution) -> list[dict[str, str]]:
     """Expose confirmed public events as grounding sources, not final prose."""
     return [
         {
             "event": event.value,
-            "description": NODE_TWO_EVENT_DESCRIPTION[event],
+            "description": FOX_CROW_EVENT_DESCRIPTION[event],
         }
         for event in resolution.events
     ]
 
 
-class NodeTwoSessionStore:
-    def __init__(self) -> None:
-        self._states: dict[str, GameState] = {}
-        self._lock = RLock()
-
-    def create(self, loop_count: int = 3) -> tuple[str, GameState]:
-        state = initial_game_state()
-        state = replace(state, loop=replace(state.loop, loop_count=loop_count))
-        session_id = uuid4().hex
-        with self._lock:
-            self._states[session_id] = state
-        return session_id, state
-
-    def get(self, session_id: str) -> GameState:
-        with self._lock:
-            try:
-                return self._states[session_id]
-            except KeyError as error:
-                raise NodeTwoError("Unknown or expired story session.") from error
-
-    def commit(self, session_id: str, expected: GameState, updated: GameState) -> None:
-        with self._lock:
-            current = self._states.get(session_id)
-            if current is None:
-                raise NodeTwoError("Unknown or expired story session.")
-            if current != expected:
-                raise NodeTwoError("The story changed while this action was being resolved.")
-            self._states[session_id] = updated
-
-    def discard(self, session_id: str) -> None:
-        """Forget a session without revealing whether it previously existed."""
-        with self._lock:
-            self._states.pop(session_id, None)
-
-
-def _ask_about_problem(state: GameState, decision: DmDecision) -> NodeTwoResolution:
+def _ask_about_problem(
+    state: GameState,
+    decision: GameAgentDecision,
+) -> FoxCrowResolution:
     first_reveal = not state.day.crow.problem_revealed
     trust_gain = 1 if first_reveal else 0
     crow = replace(
@@ -268,13 +237,16 @@ def _ask_about_problem(state: GameState, decision: DmDecision) -> NodeTwoResolut
     next_state = replace(state, day=replace(state.day, crow=crow))
     next_state = remember_fox(next_state, CROW_PROBLEM_MEMORY)
     events = (
-        NodeTwoEvent.CROW_REVEALS_PROBLEM,
-        NodeTwoEvent.FOX_LEARNS_SEARCH_LOCATION,
+        FoxCrowEvent.CROW_REVEALS_PROBLEM,
+        FoxCrowEvent.FOX_LEARNS_SEARCH_LOCATION,
     )
     return _advance_and_finish(next_state, decision, events, hunger_per_unit=5)
 
 
-def _search_for_necklace(state: GameState, decision: DmDecision) -> NodeTwoResolution:
+def _search_for_necklace(
+    state: GameState,
+    decision: GameAgentDecision,
+) -> FoxCrowResolution:
     necklace = _world_item(state, "crow_necklace")
     knows_location = (
         state.day.crow.problem_revealed
@@ -282,15 +254,15 @@ def _search_for_necklace(state: GameState, decision: DmDecision) -> NodeTwoResol
     )
 
     if necklace.owner == "fox":
-        events = (NodeTwoEvent.NECKLACE_ALREADY_HELD,)
+        events = (FoxCrowEvent.NECKLACE_ALREADY_HELD,)
         return _advance_and_finish(state, decision, events, hunger_per_unit=5)
     if necklace.owner == "crow":
-        events = (NodeTwoEvent.NECKLACE_ALREADY_RETURNED,)
+        events = (FoxCrowEvent.NECKLACE_ALREADY_RETURNED,)
         return _advance_and_finish(state, decision, events, hunger_per_unit=5)
     if not knows_location:
         events = (
-            NodeTwoEvent.FOX_SEARCHES_BUSHES,
-            NodeTwoEvent.SEARCH_INCONCLUSIVE,
+            FoxCrowEvent.FOX_SEARCHES_BUSHES,
+            FoxCrowEvent.SEARCH_INCONCLUSIVE,
         )
         return _advance_and_finish(state, decision, events, hunger_per_unit=5)
 
@@ -304,16 +276,19 @@ def _search_for_necklace(state: GameState, decision: DmDecision) -> NodeTwoResol
     next_state = replace(state, day=replace(state.day, fox=fox, world=world))
     next_state = remember_fox(next_state, NECKLACE_FOUND_MEMORY)
     events = (
-        NodeTwoEvent.FOX_FINDS_NECKLACE,
-        NodeTwoEvent.FOX_CARRIES_NECKLACE,
+        FoxCrowEvent.FOX_FINDS_NECKLACE,
+        FoxCrowEvent.FOX_CARRIES_NECKLACE,
     )
     return _advance_and_finish(next_state, decision, events, hunger_per_unit=5)
 
 
-def _return_necklace(state: GameState, decision: DmDecision) -> NodeTwoResolution:
+def _return_necklace(
+    state: GameState,
+    decision: GameAgentDecision,
+) -> FoxCrowResolution:
     necklace = _world_item(state, "crow_necklace")
     if necklace.owner != "fox" or necklace.id not in state.day.fox.inventory:
-        events = (NodeTwoEvent.RETURN_REQUIRES_POSSESSION,)
+        events = (FoxCrowEvent.RETURN_REQUIRES_POSSESSION,)
         return _advance_and_finish(state, decision, events, hunger_per_unit=5)
 
     fox = replace(
@@ -352,25 +327,25 @@ def _return_necklace(state: GameState, decision: DmDecision) -> NodeTwoResolutio
         time_cost=next_state.day.world.remaining_time_units,
     )
     events = (
-        NodeTwoEvent.FOX_RETURNS_NECKLACE,
-        NodeTwoEvent.CROW_RECIPROCATES_FRIENDSHIP,
-        NodeTwoEvent.DAY_ENDS_WITHOUT_REWIND,
+        FoxCrowEvent.FOX_RETURNS_NECKLACE,
+        FoxCrowEvent.CROW_RECIPROCATES_FRIENDSHIP,
+        FoxCrowEvent.DAY_ENDS_WITHOUT_REWIND,
     )
     return _advance_and_finish(next_state, final_decision, events, hunger_per_unit=0)
 
 
-def _other_action(state: GameState, decision: DmDecision) -> NodeTwoResolution:
-    events = (NodeTwoEvent.TIME_PASSES_HUNGRIER,)
+def _other_action(state: GameState, decision: GameAgentDecision) -> FoxCrowResolution:
+    events = (FoxCrowEvent.TIME_PASSES_HUNGRIER,)
     return _advance_and_finish(state, decision, events, hunger_per_unit=5)
 
 
 def _advance_and_finish(
     state: GameState,
-    decision: DmDecision,
-    events: tuple[NodeTwoEvent, ...],
+    decision: GameAgentDecision,
+    events: tuple[FoxCrowEvent, ...],
     *,
     hunger_per_unit: int,
-) -> NodeTwoResolution:
+) -> FoxCrowResolution:
     result = advance_time(
         state,
         time_cost=decision.time_cost,
@@ -383,8 +358,8 @@ def _advance_and_finish(
     next_events = events
     if result.outcome in {DayOutcome.FOX_STARVED, DayOutcome.LOOP_RESET}:
         next_state = reset_for_next_loop(next_state)
-        next_events += (NodeTwoEvent.DAY_REWINDS,)
-    return NodeTwoResolution(
+        next_events += (FoxCrowEvent.DAY_REWINDS,)
+    return FoxCrowResolution(
         state=next_state,
         outcome=result.outcome,
         intent=decision.intent,
@@ -396,7 +371,7 @@ def _world_item(state: GameState, item_id: str) -> ItemState:
     for item in state.day.world.items:
         if item.id == item_id:
             return item
-    raise NodeTwoError(f"Required world item is missing: {item_id}.")
+    raise FoxCrowRuleError(f"Required world item is missing: {item_id}.")
 
 
 def _replace_item(items: tuple[ItemState, ...], updated: ItemState) -> tuple[ItemState, ...]:

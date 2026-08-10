@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from backend.action_resolution import (
+from backend.game_agent.effects import (
     ActionType,
     AdjustFoxHungerEffect,
     ConsumeFoodEffect,
@@ -12,7 +12,7 @@ from backend.action_resolution import (
     ResolutionValidationError,
     parse_resolution_proposal,
 )
-from backend.game_state import (
+from backend.game_system.state import (
     TOTAL_DAY_UNITS,
     DayState,
     FoxState,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from backend.game_state import (
+from backend.game_system.state import (
     MAX_FOX_HUNGER,
     TOTAL_DAY_UNITS,
     DayOutcome,

@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import replace
 
-from backend.game_state import (
+from backend.game_system.state import (
     FRIENDSHIP_TRUST_THRESHOLD,
     MAX_FOX_HUNGER,
     TOTAL_DAY_UNITS,

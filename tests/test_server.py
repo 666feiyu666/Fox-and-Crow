@@ -9,16 +9,19 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
 
-from backend.server import (
-    ActionOutcome,
+from backend.server import create_server
+from backend.game_system.fox_crow import game_agent_view
+from backend.infrastructure.deepseek import (
     ConfigurationError,
-    DeepSeekClient,
+    DeepSeekAgentGateway,
     DeepSeekError,
-    NarrationAudit,
-    create_server,
     load_env_local,
 )
-from backend.node_two import NodeTwoError, NodeTwoSessionStore, state_view
+from backend.infrastructure.session_store import (
+    InMemoryGameSessionStore,
+    SessionStoreError,
+)
+from backend.story_agent.ports import FreeActionOutcome, NarrationAudit
 
 
 class FakeHTTPResponse:
@@ -35,40 +38,40 @@ class FakeHTTPResponse:
         return json.dumps(self.payload).encode("utf-8")
 
 
-class StubDeepSeekClient:
+class StubAgentGateway:
     def __init__(self, configured=True):
         self.configured = configured
         self.model = "test-model"
         self.calls = []
-        self.dm_calls = []
+        self.game_agent_calls = []
         self.narration_calls = []
         self.audit_calls = []
         self.audit_results = []
-        self.fail_dm = False
-        self.dm_error = None
+        self.fail_game_agent = False
+        self.game_agent_error = None
 
-    def generate_action(self, passage, loop_count, action):
+    def generate_free_action(self, passage, loop_count, action):
         if not self.configured:
             raise ConfigurationError(
                 "DeepSeek is not configured. Set DEEPSEEK_API_KEY before starting the server."
             )
         self.calls.append((passage, loop_count, action))
-        return ActionOutcome(
+        return FreeActionOutcome(
             narration="You circle the tree, and the crow watches you with new suspicion.",
             promoted=action == "Offer the crow a trade",
             choice_label="Offer a trade" if action == "Offer the crow a trade" else None,
         )
 
-    def resolve_node_two(self, state, action):
+    def interpret_action(self, state, action):
         if not self.configured:
             raise ConfigurationError(
                 "DeepSeek is not configured. Set DEEPSEEK_API_KEY before starting the server."
             )
-        if self.dm_error is not None:
-            raise self.dm_error
-        if self.fail_dm:
+        if self.game_agent_error is not None:
+            raise self.game_agent_error
+        if self.fail_game_agent:
             raise DeepSeekError("Resolution failed.")
-        self.dm_calls.append((state, action))
+        self.game_agent_calls.append((state, action))
         normalized = action.casefold()
         if "wrong" in normalized or "problem" in normalized:
             intent = "ask_problem"
@@ -84,7 +87,7 @@ class StubDeepSeekClient:
             time_cost = 1
         return {"intent": intent, "timeCost": time_cost}
 
-    def narrate_node_two(
+    def narrate(
         self,
         before,
         after,
@@ -97,7 +100,7 @@ class StubDeepSeekClient:
         )
         return " ".join(event["description"] for event in public_events)
 
-    def audit_node_two_narration(
+    def audit_narration(
         self,
         before,
         after,
@@ -112,11 +115,11 @@ class StubDeepSeekClient:
 
 class StoryServerTests(unittest.TestCase):
     def setUp(self):
-        self.client = StubDeepSeekClient()
-        self.session_store = NodeTwoSessionStore()
+        self.client = StubAgentGateway()
+        self.session_store = InMemoryGameSessionStore()
         self.server = create_server(
             port=0,
-            client=self.client,
+            agent_gateway=self.client,
             session_store=self.session_store,
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -198,7 +201,7 @@ class StoryServerTests(unittest.TestCase):
         )
         self.assertNotIn("DeepSeek", data["error"])
 
-    def test_node_two_session_runs_the_complete_golden_path(self):
+    def test_dynamic_session_runs_the_complete_golden_path(self):
         status, created = self.request("POST", "/api/session", {"loopCount": 3})
         self.assertEqual(status, 201)
         self.assertEqual(set(created), {"sessionId", "playerState"})
@@ -217,7 +220,7 @@ class StoryServerTests(unittest.TestCase):
         )
         self.assertEqual(set(asked["playerState"]), {"loopCount", "memories"})
         self.assertTrue(
-            state_view(self.session_store.get(session_id))["crow"]["problemRevealed"]
+            game_agent_view(self.session_store.get(session_id))["crow"]["problemRevealed"]
         )
 
         status, found = self.request(
@@ -227,7 +230,7 @@ class StoryServerTests(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertEqual(
-            state_view(self.session_store.get(session_id))["necklace"]["status"],
+            game_agent_view(self.session_store.get(session_id))["necklace"]["status"],
             "found",
         )
 
@@ -243,7 +246,7 @@ class StoryServerTests(unittest.TestCase):
             {"sessionId", "narration", "outcome", "playerState"},
         )
         self.assertEqual(
-            state_view(self.session_store.get(session_id))["necklace"]["status"],
+            game_agent_view(self.session_store.get(session_id))["necklace"]["status"],
             "returned",
         )
 
@@ -262,9 +265,11 @@ class StoryServerTests(unittest.TestCase):
         story_context = json.dumps(
             {"before": before, "after": after, "publicEvents": public_events}
         ).casefold()
-        dm_context = json.dumps(self.client.dm_calls[-1][0]).casefold()
-        self.assertIn("necklace", dm_context)
-        self.assertEqual(len(self.client.dm_calls), 1)
+        game_agent_context = json.dumps(
+            self.client.game_agent_calls[-1][0]
+        ).casefold()
+        self.assertIn("necklace", game_agent_context)
+        self.assertEqual(len(self.client.game_agent_calls), 1)
         self.assertNotIn("necklace", story_context)
         self.assertNotIn("necklace", result["narration"].casefold())
         self.assertIn("hungrier", result["narration"])
@@ -335,11 +340,11 @@ class StoryServerTests(unittest.TestCase):
         self.assertEqual(result["narration"], "Time passes, and you feel hungrier.")
         self.assertEqual(len(self.client.audit_calls), 2)
 
-    def test_failed_dm_does_not_commit_the_candidate_state(self):
+    def test_failed_game_agent_does_not_commit_the_candidate_state(self):
         _, created = self.request("POST", "/api/session", {"loopCount": 3})
         session_id = created["sessionId"]
         before = self.session_store.get(session_id)
-        self.client.fail_dm = True
+        self.client.fail_game_agent = True
 
         status, data = self.request(
             "POST",
@@ -360,7 +365,7 @@ class StoryServerTests(unittest.TestCase):
         _, created = self.request("POST", "/api/session", {"loopCount": 3})
         session_id = created["sessionId"]
         before = self.session_store.get(session_id)
-        self.client.dm_error = DeepSeekError(
+        self.client.game_agent_error = DeepSeekError(
             "DeepSeek returned HTTP 402: Insufficient balance",
             status_code=402,
         )
@@ -386,7 +391,7 @@ class StoryServerTests(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertEqual(data, {"status": "ok"})
-        with self.assertRaisesRegex(NodeTwoError, "Unknown or expired"):
+        with self.assertRaisesRegex(SessionStoreError, "Unknown or expired"):
             self.session_store.get(session_id)
 
         status, data = self.request(
@@ -398,8 +403,8 @@ class StoryServerTests(unittest.TestCase):
         self.assertEqual(data, {"status": "ok"})
 
 
-class DeepSeekClientTests(unittest.TestCase):
-    @patch("backend.server.urlopen")
+class DeepSeekAgentGatewayTests(unittest.TestCase):
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_client_sends_chat_completion_and_parses_json_narration(self, mock_urlopen):
         model_content = json.dumps(
             {
@@ -411,13 +416,13 @@ class DeepSeekClientTests(unittest.TestCase):
         mock_urlopen.return_value = FakeHTTPResponse(
             {"choices": [{"message": {"content": model_content}}]}
         )
-        client = DeepSeekClient(
+        client = DeepSeekAgentGateway(
             api_key="test-secret",
             base_url="https://deepseek.example",
             model="deepseek-v4-flash",
         )
 
-        outcome = client.generate_action("Morning", 1, "Wait quietly")
+        outcome = client.generate_free_action("Morning", 1, "Wait quietly")
 
         self.assertEqual(outcome.narration, "You wait beneath the branch.")
         self.assertTrue(outcome.promoted)
@@ -433,7 +438,7 @@ class DeepSeekClientTests(unittest.TestCase):
         self.assertIn("meaningful character or world consequence", system_prompt)
         self.assertIn("Partial successes and failures may be promoted", system_prompt)
 
-    @patch("backend.server.urlopen")
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_client_rejects_a_promoted_action_without_a_label(self, mock_urlopen):
         model_content = json.dumps(
             {"narration": "You try a new approach.", "promoted": True, "choiceLabel": None}
@@ -441,13 +446,13 @@ class DeepSeekClientTests(unittest.TestCase):
         mock_urlopen.return_value = FakeHTTPResponse(
             {"choices": [{"message": {"content": model_content}}]}
         )
-        client = DeepSeekClient(api_key="test-secret")
+        client = DeepSeekAgentGateway(api_key="test-secret")
 
         with self.assertRaisesRegex(DeepSeekError, "without a choice label"):
-            client.generate_action("Morning", 0, "Try something")
+            client.generate_free_action("Morning", 0, "Try something")
 
-    @patch("backend.server.time.sleep")
-    @patch("backend.server.urlopen")
+    @patch("backend.infrastructure.deepseek.time.sleep")
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_client_retries_rate_limit_before_succeeding(self, mock_urlopen, mock_sleep):
         rate_limit = HTTPError(
             "https://api.deepseek.com/chat/completions",
@@ -463,15 +468,15 @@ class DeepSeekClientTests(unittest.TestCase):
             rate_limit,
             FakeHTTPResponse({"choices": [{"message": {"content": model_content}}]}),
         ]
-        client = DeepSeekClient(api_key="test-secret", api_attempts=2)
+        client = DeepSeekAgentGateway(api_key="test-secret", api_attempts=2)
 
-        outcome = client.generate_action("Morning", 0, "Wait")
+        outcome = client.generate_free_action("Morning", 0, "Wait")
 
         self.assertEqual(outcome.narration, "You wait.")
         self.assertEqual(mock_urlopen.call_count, 2)
         mock_sleep.assert_called_once_with(0.5)
 
-    @patch("backend.server.urlopen")
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_client_preserves_provider_error_details(self, mock_urlopen):
         mock_urlopen.side_effect = HTTPError(
             "https://api.deepseek.com/chat/completions",
@@ -480,15 +485,15 @@ class DeepSeekClientTests(unittest.TestCase):
             {},
             io.BytesIO(b'{"error":{"message":"Insufficient balance"}}'),
         )
-        client = DeepSeekClient(api_key="test-secret")
+        client = DeepSeekAgentGateway(api_key="test-secret")
 
         with self.assertRaisesRegex(DeepSeekError, "HTTP 402: Insufficient balance") as caught:
-            client.generate_action("Morning", 0, "Wait")
+            client.generate_free_action("Morning", 0, "Wait")
 
         self.assertEqual(caught.exception.status_code, 402)
         self.assertFalse(caught.exception.retryable)
 
-    @patch("backend.server.urlopen")
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_story_agent_request_contains_only_perspective_and_public_events(
         self,
         mock_urlopen,
@@ -496,14 +501,14 @@ class DeepSeekClientTests(unittest.TestCase):
         mock_urlopen.return_value = FakeHTTPResponse(
             {"choices": [{"message": {"content": '{"narration":"You wait."}'}}]}
         )
-        client = DeepSeekClient(api_key="test-secret")
+        client = DeepSeekAgentGateway(api_key="test-secret")
         perspective = {
             "visibleScene": {"foxLocation": "clearing", "surroundings": []},
             "foxCondition": "hungry",
             "foxKnowledge": [],
         }
 
-        narration = client.narrate_node_two(
+        narration = client.narrate(
             perspective,
             perspective,
             "I wait.",
@@ -519,7 +524,7 @@ class DeepSeekClientTests(unittest.TestCase):
             {"perspectiveBefore", "playerAction", "publicEvents", "perspectiveAfter"},
         )
 
-    @patch("backend.server.urlopen")
+    @patch("backend.infrastructure.deepseek.urlopen")
     def test_grounding_agent_returns_revision_feedback(self, mock_urlopen):
         mock_urlopen.return_value = FakeHTTPResponse(
             {
@@ -537,14 +542,14 @@ class DeepSeekClientTests(unittest.TestCase):
                 ]
             }
         )
-        client = DeepSeekClient(api_key="test-secret")
+        client = DeepSeekAgentGateway(api_key="test-secret")
         perspective = {
             "visibleScene": {"foxLocation": "clearing", "surroundings": []},
             "foxCondition": "hungry",
             "foxKnowledge": [],
         }
 
-        audit = client.audit_node_two_narration(
+        audit = client.audit_narration(
             perspective,
             perspective,
             "I wait.",
