@@ -12,6 +12,8 @@ The Fox and the Crow: A Day in Loop
 
 :: StoryInit
 <<set $loopCount = 0>>
+<<set $learnedActions = {}>>
+<<set $generatedTurn = null>>
 
 :: StoryDisplay [nobr]
 <header class="story-header">
@@ -172,6 +174,44 @@ body::before {
     border-top: 1px solid var(--line);
 }
 
+.learned-actions-panel {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px solid rgba(241, 178, 74, 0.28);
+    background: rgba(241, 178, 74, 0.04);
+}
+
+.learned-actions-panel h2 {
+    margin: 0 0 0.45rem;
+    color: var(--accent-strong);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.learned-actions-list {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
+.learned-action-choice {
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(241, 178, 74, 0.52);
+    border-radius: 2px;
+    color: var(--accent-strong);
+    background: rgba(241, 178, 74, 0.08);
+    font: 0.98rem/1.4 system-ui, sans-serif;
+    text-align: left;
+    cursor: pointer;
+}
+
+.learned-action-choice:hover,
+.learned-action-choice:focus-visible {
+    border-color: var(--accent-strong);
+    color: #17130d;
+    background: var(--accent-strong);
+}
+
 .ai-action-panel h2 {
     margin: 0 0 0.65rem;
     color: var(--accent-strong);
@@ -232,6 +272,28 @@ body::before {
     line-height: 1.75;
 }
 
+.generated-action-player,
+.generated-action-narration {
+    margin: 0 0 1.5rem;
+    padding: 1rem;
+    border-left: 2px solid var(--accent);
+    background: rgba(241, 178, 74, 0.07);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+
+.generated-action-player {
+    border-left-color: var(--muted);
+    color: var(--muted);
+    font-family: system-ui, sans-serif;
+}
+
+.generated-action-memory {
+    color: var(--muted) !important;
+    font-family: system-ui, sans-serif;
+    font-size: 0.88rem !important;
+}
+
 @media (max-width: 520px) {
     #passages {
         width: min(100% - 1.25rem, 42rem);
@@ -249,8 +311,8 @@ async function submitPlayerAction(form) {
     var input = form.querySelector(".ai-action-input");
     var button = form.querySelector(".ai-action-submit");
     var status = form.querySelector(".ai-action-status");
-    var result = form.querySelector(".ai-action-result");
     var action = input.value.trim();
+    var sourcePassage = State.passage;
 
     if (!action) {
         status.textContent = "Enter an action first.";
@@ -259,7 +321,6 @@ async function submitPlayerAction(form) {
 
     button.disabled = true;
     status.textContent = "The forest considers your action...";
-    result.hidden = true;
 
     try {
         if (window.location.protocol === "file:") {
@@ -281,9 +342,17 @@ async function submitPlayerAction(form) {
             throw new Error(body.error || "The story server could not process that action.");
         }
 
-        result.textContent = body.narration;
-        result.hidden = false;
-        status.textContent = "DeepSeek has answered.";
+        if (body.learnedChoice) {
+            rememberLearnedAction(sourcePassage, body.learnedChoice, body.narration);
+        }
+        input.value = "";
+        openGeneratedPassage(
+            sourcePassage,
+            action,
+            body.narration,
+            Boolean(body.learnedChoice),
+            false
+        );
     }
     catch (error) {
         status.textContent = error.message || "The story server could not be reached.";
@@ -293,12 +362,114 @@ async function submitPlayerAction(form) {
     }
 };
 
+function openGeneratedPassage(sourcePassage, action, narration, remembered, replay) {
+    State.variables.generatedTurn = {
+        sourcePassage: sourcePassage,
+        action: action,
+        narration: narration,
+        remembered: remembered,
+        replay: replay
+    };
+    Engine.play("Generated Action");
+}
+
+function normalizePlayerAction(action) {
+    return action.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function rememberLearnedAction(passage, choice, narration) {
+    var learnedActions = State.variables.learnedActions || {};
+    var passageActions = learnedActions[passage] || [];
+    var normalizedAction = normalizePlayerAction(choice.action);
+    var existingIndex = passageActions.findIndex(function (item) {
+        return normalizePlayerAction(item.action) === normalizedAction;
+    });
+    var remembered = {
+        label: choice.label,
+        action: choice.action,
+        narration: narration
+    };
+
+    if (existingIndex >= 0) {
+        passageActions[existingIndex] = remembered;
+    }
+    else {
+        passageActions.push(remembered);
+    }
+    learnedActions[passage] = passageActions;
+    State.variables.learnedActions = learnedActions;
+}
+
+function renderLearnedActions() {
+    var panel = document.querySelector(".learned-actions-panel");
+    if (!panel) {
+        return;
+    }
+
+    var list = panel.querySelector(".learned-actions-list");
+    var learnedActions = State.variables.learnedActions || {};
+    var passageActions = learnedActions[State.passage] || [];
+    list.replaceChildren();
+
+    passageActions.forEach(function (remembered) {
+        var button = document.createElement("button");
+        button.className = "learned-action-choice";
+        button.type = "button";
+        button.textContent = remembered.label;
+        button.addEventListener("click", function () {
+            openGeneratedPassage(
+                State.passage,
+                remembered.action,
+                remembered.narration,
+                true,
+                true
+            );
+        });
+        list.appendChild(button);
+    });
+    panel.hidden = passageActions.length === 0;
+}
+
+function renderGeneratedTurn() {
+    if (State.passage !== "Generated Action") {
+        return;
+    }
+    var turn = State.variables.generatedTurn;
+    if (!turn) {
+        return;
+    }
+
+    document.querySelector(".generated-action-player").textContent = turn.action;
+    document.querySelector(".generated-action-narration").textContent = turn.narration;
+    var memory = document.querySelector(".generated-action-memory");
+    if (turn.replay) {
+        memory.textContent = "You remember how this action played out before. No new API request was made.";
+    }
+    else if (turn.remembered) {
+        memory.textContent = "This meaningful action is now available as a remembered choice.";
+    }
+    else {
+        memory.textContent = "This action became a passage, but it was not saved as a remembered choice.";
+    }
+}
+
 $(document).on("submit", ".ai-action-form", function (event) {
     event.preventDefault();
     submitPlayerAction(this);
 });
 
+$(document).on(":passagedisplay", function () {
+    renderLearnedActions();
+    renderGeneratedTurn();
+});
+
 :: PassageFooter
+<<if State.passage !== "Generated Action">>
+<section class="learned-actions-panel" hidden>
+    <h2>Remembered approaches</h2>
+    <p class="ai-action-help">These actions created meaningful results here before.</p>
+    <div class="learned-actions-list"></div>
+</section>
 <section class="ai-action-panel">
     <h2>Try another way</h2>
     <p class="ai-action-help">Describe a different action for the fox. DeepSeek will narrate its immediate consequence without changing the fixed path.</p>
@@ -306,9 +477,27 @@ $(document).on("submit", ".ai-action-form", function (event) {
         <textarea class="ai-action-input" maxlength="500" required placeholder="For example: I offer the crow a trade."></textarea>
         <button class="ai-action-submit" type="submit">Ask the story</button>
         <p class="ai-action-status" role="status" aria-live="polite"></p>
-        <div class="ai-action-result" aria-live="polite" hidden></div>
     </form>
 </section>
+<</if>>
+
+:: Generated Action [generated]
+<h1>A New Turn</h1>
+
+<p class="choice-label">You chose</p>
+<div class="generated-action-player"></div>
+
+<p class="choice-label">What happened</p>
+<div class="generated-action-narration"></div>
+<p class="generated-action-memory" aria-live="polite"></p>
+
+<<if $generatedTurn>>
+    <<link "Return to the scene">>
+        <<goto $generatedTurn.sourcePassage>>
+    <</link>>
+<<else>>
+    [[Return to the morning->Morning]]
+<</if>>
 
 :: Morning
 <h1>Another Morning</h1>

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from dataclasses import dataclass
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -33,6 +34,13 @@ class ConfigurationError(RuntimeError):
 
 class DeepSeekError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class ActionOutcome:
+    narration: str
+    promoted: bool
+    choice_label: str | None = None
 
 
 ENV_LOCAL_KEYS = {
@@ -84,7 +92,7 @@ class DeepSeekClient:
     def configured(self) -> bool:
         return bool(self.api_key.strip())
 
-    def generate_action(self, passage: str, loop_count: int, action: str) -> str:
+    def generate_action(self, passage: str, loop_count: int, action: str) -> ActionOutcome:
         if not self.configured:
             raise ConfigurationError(
                 "DeepSeek is not configured. Set DEEPSEEK_API_KEY before starting the server."
@@ -92,10 +100,18 @@ class DeepSeekClient:
 
         system_prompt = (
             "You are the narrator of an interactive adaptation of The Fox and the Crow. "
-            "Respond to the fox player's alternative action without changing passages or ending the time loop. "
+            "Respond to the fox player's alternative action without deciding navigation or ending the time loop. "
             "Write two to four concise sentences in English, in second person and present tense. "
             "Respect the current scene and describe an immediate, plausible consequence. "
-            "Return JSON only, in exactly this shape: {\"narration\": \"...\"}."
+            "Also decide whether the action should become a reusable choice. Promote any concrete, "
+            "scene-grounded action that creates a meaningful character or world consequence, or reveals "
+            "useful repeatable information. Partial successes and failures may be promoted when they change "
+            "trust, reveal a disposition, move someone, consume a resource, or teach the player something. "
+            "Do not promote only when the input is not an action, is incoherent or impossible in the scene, "
+            "or produces no meaningful consequence. If promoted, write a concise action-oriented choice label "
+            "of at most 80 characters. Return JSON only, in exactly this shape: "
+            "{\"narration\": \"...\", \"promoted\": true, \"choiceLabel\": \"...\"}. "
+            "Use false and null for the final two values when the action is not promoted."
         )
         player_state = {
             "passage": passage,
@@ -143,12 +159,29 @@ class DeepSeekClient:
             content = response_data["choices"][0]["message"]["content"]
             result = json.loads(content)
             narration = result["narration"].strip()
+            promoted = result["promoted"]
+            choice_label = result["choiceLabel"]
         except (KeyError, IndexError, TypeError, AttributeError, json.JSONDecodeError) as error:
             raise DeepSeekError("DeepSeek returned an unexpected response shape.") from error
 
         if not narration:
             raise DeepSeekError("DeepSeek returned an empty narration.")
-        return narration
+        if not isinstance(promoted, bool):
+            raise DeepSeekError("DeepSeek returned an invalid promotion decision.")
+        if promoted:
+            if not isinstance(choice_label, str) or not choice_label.strip():
+                raise DeepSeekError("DeepSeek promoted the action without a choice label.")
+            choice_label = " ".join(choice_label.split())
+            if len(choice_label) > 80:
+                raise DeepSeekError("DeepSeek returned a choice label longer than 80 characters.")
+        elif choice_label is not None:
+            raise DeepSeekError("DeepSeek returned a choice label for an unpromoted action.")
+
+        return ActionOutcome(
+            narration=narration,
+            promoted=promoted,
+            choice_label=choice_label,
+        )
 
 
 class StoryRequestHandler(SimpleHTTPRequestHandler):
@@ -212,7 +245,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         action = payload["action"].strip()
 
         try:
-            narration = self.deepseek_client.generate_action(passage, loop_count, action)
+            outcome = self.deepseek_client.generate_action(passage, loop_count, action)
         except ConfigurationError as error:
             self._send_json(503, {"error": str(error)})
             return
@@ -223,9 +256,17 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self._send_json(
             200,
             {
-                "narration": narration,
+                "narration": outcome.narration,
                 "passage": passage,
                 "model": self.deepseek_client.model,
+                "learnedChoice": (
+                    {
+                        "label": outcome.choice_label,
+                        "action": action,
+                    }
+                    if outcome.promoted
+                    else None
+                ),
             },
         )
 

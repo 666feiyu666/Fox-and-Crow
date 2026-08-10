@@ -7,7 +7,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from backend.server import ConfigurationError, DeepSeekClient, create_server, load_env_local
+from backend.server import (
+    ActionOutcome,
+    ConfigurationError,
+    DeepSeekClient,
+    DeepSeekError,
+    create_server,
+    load_env_local,
+)
 
 
 class FakeHTTPResponse:
@@ -36,7 +43,11 @@ class StubDeepSeekClient:
                 "DeepSeek is not configured. Set DEEPSEEK_API_KEY before starting the server."
             )
         self.calls.append((passage, loop_count, action))
-        return "You circle the tree, and the crow watches you with new suspicion."
+        return ActionOutcome(
+            narration="You circle the tree, and the crow watches you with new suspicion.",
+            promoted=action == "Offer the crow a trade",
+            choice_label="Offer a trade" if action == "Offer the crow a trade" else None,
+        )
 
 
 class StoryServerTests(unittest.TestCase):
@@ -81,7 +92,21 @@ class StoryServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("crow", data["narration"])
         self.assertEqual(data["passage"], "Morning")
+        self.assertIsNone(data["learnedChoice"])
         self.assertEqual(self.client.calls, [("Morning", 2, "Climb the tree")])
+
+    def test_successful_action_returns_a_reusable_learned_choice(self):
+        status, data = self.request(
+            "POST",
+            "/api/action",
+            {"passage": "Morning", "loopCount": 1, "action": "Offer the crow a trade"},
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            data["learnedChoice"],
+            {"label": "Offer a trade", "action": "Offer the crow a trade"},
+        )
 
     def test_action_rejects_empty_input_without_calling_deepseek(self):
         status, data = self.request(
@@ -110,7 +135,13 @@ class StoryServerTests(unittest.TestCase):
 class DeepSeekClientTests(unittest.TestCase):
     @patch("backend.server.urlopen")
     def test_client_sends_chat_completion_and_parses_json_narration(self, mock_urlopen):
-        model_content = json.dumps({"narration": "You wait beneath the branch."})
+        model_content = json.dumps(
+            {
+                "narration": "You wait beneath the branch.",
+                "promoted": True,
+                "choiceLabel": "Wait beneath the branch",
+            }
+        )
         mock_urlopen.return_value = FakeHTTPResponse(
             {"choices": [{"message": {"content": model_content}}]}
         )
@@ -120,9 +151,11 @@ class DeepSeekClientTests(unittest.TestCase):
             model="deepseek-v4-flash",
         )
 
-        narration = client.generate_action("Morning", 1, "Wait quietly")
+        outcome = client.generate_action("Morning", 1, "Wait quietly")
 
-        self.assertEqual(narration, "You wait beneath the branch.")
+        self.assertEqual(outcome.narration, "You wait beneath the branch.")
+        self.assertTrue(outcome.promoted)
+        self.assertEqual(outcome.choice_label, "Wait beneath the branch")
         request = mock_urlopen.call_args.args[0]
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(request.full_url, "https://deepseek.example/chat/completions")
@@ -130,6 +163,22 @@ class DeepSeekClientTests(unittest.TestCase):
         self.assertEqual(payload["model"], "deepseek-v4-flash")
         self.assertEqual(payload["response_format"], {"type": "json_object"})
         self.assertFalse(payload["stream"])
+        system_prompt = payload["messages"][0]["content"]
+        self.assertIn("meaningful character or world consequence", system_prompt)
+        self.assertIn("Partial successes and failures may be promoted", system_prompt)
+
+    @patch("backend.server.urlopen")
+    def test_client_rejects_a_promoted_action_without_a_label(self, mock_urlopen):
+        model_content = json.dumps(
+            {"narration": "You try a new approach.", "promoted": True, "choiceLabel": None}
+        )
+        mock_urlopen.return_value = FakeHTTPResponse(
+            {"choices": [{"message": {"content": model_content}}]}
+        )
+        client = DeepSeekClient(api_key="test-secret")
+
+        with self.assertRaisesRegex(DeepSeekError, "without a choice label"):
+            client.generate_action("Morning", 0, "Try something")
 
 
 class LocalEnvironmentTests(unittest.TestCase):

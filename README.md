@@ -7,8 +7,9 @@ The current version is deliberately small:
 - You play a fox who has not eaten for three days.
 - Each scene keeps one fixed choice from the original fable.
 - Getting the cheese does not end the game; the day resets while the loop counter and the fox's memory persist.
-- A free-text action can receive an immediate AI-narrated consequence without changing the fixed path.
-- Turning successful free-text actions into permanent Twine choices is not included yet.
+- Every valid free-text action opens a generated Twine passage containing the player's action and its AI-narrated consequence.
+- DeepSeek can promote a concrete action with a meaningful consequence or reusable information into a remembered choice for that scene, including useful partial successes and failures.
+- Remembered choices persist through later loops in the current playthrough and replay their known result without another API request.
 
 ## Requirements
 
@@ -65,6 +66,12 @@ DEEPSEEK_MODEL=deepseek-v4-pro
 
 The API key remains in the backend process and is never sent to the browser. Do not put it in the story source or commit it to Git.
 
+## Documentation
+
+- [Node 1 implementation](docs/node-1-implementation.md) — delivered player flow, component boundaries, evidence, and current limits
+- [Development progress](docs/development-progress.md) — evidence-backed delivery status for Node 1 only
+- [Notion documentation workflow](docs/notion-documentation-workflow.md) — reusable process and template for keeping Notion aligned with the repository
+
 ## Verify
 
 ```powershell
@@ -80,10 +87,23 @@ The first command validates and rebuilds the Twine story. The Python tests exerc
 src/story.twee       Twine/Twee story source and styles
 .env.local.example   Safe template for local DeepSeek configuration
 backend/server.py     Serves the story and proxies validated actions to DeepSeek
+backend/game_state.py Defines the authoritative day, character, world, and loop state rules
+backend/action_resolution.py Parses and validates the restricted effects proposed by an AI resolver
 tests/test_server.py  Exercises the local API without calling DeepSeek
+tests/test_game_state.py Verifies time, friendship, starvation, ownership, and loop reset rules
+tests/test_action_resolution.py Rejects unauthorized, inconsistent, and out-of-bounds AI proposals
 dist/index.html      Playable build output
+docs/node-1-implementation.md Consolidated Node 1 implementation and verification record
+docs/development-progress.md Evidence-backed Node 1 delivery ledger
+docs/notion-documentation-workflow.md Reusable Notion documentation process
 ```
 
 ## Current boundary
 
-DeepSeek currently narrates an immediate response only. It does not navigate to another passage, change loop state, or save an action as a reusable choice. That promotion mechanism is the next development stage.
+DeepSeek narrates an immediate response and decides whether the action produced a meaningful consequence or reusable information. Every valid response becomes a generated passage. Meaningful actions become remembered choices in SugarCube story state, keyed by passage and deduplicated by action text. They survive later time loops in the current playthrough but are not yet stored across a fresh browser session.
+
+Remembered actions navigate to the generated `A New Turn` passage and replay their known immediate consequence without another API request. They do not alter the fixed story route or create a persistent branching graph.
+
+The backend now has a tested, immutable game-state core that separates resettable day state from fox-only loop memory. It enforces positive time costs, bounded hunger, item ownership, formal friendship conditions, and end-of-day reset or escape. This core is not connected to `/api/action` or the Twine interface yet.
+
+AI state-resolution proposals now have a strict, state-aware protocol. The validator accepts only named effects such as character movement, bounded hunger or trust changes, relationship events, food discovery, and item transfer or consumption. It rejects direct friendship or terminal decisions, unknown world references, duplicate item IDs, exhausted resources, and extra fields. Validated effects are not applied to game state yet. This README does not define the next node.
