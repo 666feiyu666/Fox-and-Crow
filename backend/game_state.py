@@ -39,6 +39,7 @@ class CrowState:
     trust: int = 0
     location: str = "tree"
     inventory: tuple[str, ...] = ("crow_cheese",)
+    problem_revealed: bool = False
 
     def __post_init__(self) -> None:
         if not -5 <= self.trust <= 5:
@@ -80,11 +81,13 @@ class WorldState:
     locations: tuple[LocationState, ...] = (
         LocationState("clearing", 0),
         LocationState("tree", 0),
+        LocationState("bushes", 0),
         LocationState("forest_edge", 1),
         LocationState("stream_bank", 1),
     )
     items: tuple[ItemState, ...] = (
         ItemState("crow_cheese", "food", "tree", "crow"),
+        ItemState("crow_necklace", "keepsake", "bushes", None),
     )
 
     def __post_init__(self) -> None:
