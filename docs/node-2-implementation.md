@@ -91,7 +91,7 @@ Fox memories remain in loop state and survive a failed day. The necklace, crow s
 
 ## Verification evidence
 
-- All 53 Python tests pass, including the HTTP golden path, retry behavior, actionable balance errors, no-commit-on-DM-failure, rewrite-before-commit, and deterministic fallback after two grounding rejections.
+- All 56 Python tests pass, including the HTTP golden path, browser CORS behavior, retry behavior, actionable balance errors, no-commit-on-DM-failure, rewrite-before-commit, and deterministic fallback after two grounding rejections.
 - Tweego 2.1.1 builds `dist/index.html` successfully with SugarCube 2.30.0.
 - The direct `backend/server.py` entry point loads successfully.
 - An earlier real `deepseek-v4-flash` browser run classified and narrated all three golden-path actions; the current configuration uses `deepseek-v4-pro`.

@@ -635,20 +635,44 @@ body::before {
 }
 
 :: StoryScript [script]
+// Keep this empty for the local same-origin server. Before rebuilding the
+// itch.io release, set it to the Render origin, without a trailing slash.
+var storyApiBaseUrl = "";
 var activeStoryRequestController = null;
 var storyRunGeneration = 0;
 var selectedStoryLogDay = null;
+
+function storyApiUrl(path) {
+    return storyApiBaseUrl.replace(/\/+$/, "") + path;
+}
 
 async function postStoryJson(path, payload, signal) {
     if (window.location.protocol === "file:") {
         throw new Error("Start the local story server before using free-text actions.");
     }
-    var response = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: signal
-    });
+    var response;
+    try {
+        response = await fetch(storyApiUrl(path), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: signal
+        });
+    }
+    catch (error) {
+        if (error.name === "AbortError") {
+            throw error;
+        }
+        throw new Error(
+            "The story server could not be reached. Wait a moment and try again."
+        );
+    }
+    var contentType = response.headers.get("Content-Type") || "";
+    if (!contentType.includes("application/json")) {
+        throw new Error(
+            "The story server is starting or unavailable. Wait a moment and try again."
+        );
+    }
     var body = await response.json();
     if (!response.ok) {
         throw new Error(body.error || "The story server could not process that action.");

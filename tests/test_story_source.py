@@ -27,6 +27,11 @@ class StorySourceTests(unittest.TestCase):
         self.assertIn('postStoryJson("/api/session/reset"', self.source)
         self.assertIn("Engine.restart();", self.source)
 
+    def test_api_origin_is_configured_once_and_applied_to_every_api_path(self):
+        self.assertIn('var storyApiBaseUrl = "";', self.source)
+        self.assertIn("function storyApiUrl(path)", self.source)
+        self.assertIn("fetch(storyApiUrl(path)", self.source)
+
 
 if __name__ == "__main__":
     unittest.main()

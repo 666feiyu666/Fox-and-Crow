@@ -147,6 +147,52 @@ class StoryServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(data, {"status": "ok"})
 
+    def test_api_supports_browser_cors_preflight(self):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+        connection.request(
+            "OPTIONS",
+            "/api/turn",
+            headers={
+                "Origin": "https://html-classic.itch.zone",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        response = connection.getresponse()
+        body = response.read()
+        connection.close()
+
+        self.assertEqual(response.status, 204)
+        self.assertEqual(body, b"")
+        self.assertEqual(response.getheader("Access-Control-Allow-Origin"), "*")
+        self.assertIn(
+            "POST",
+            response.getheader("Access-Control-Allow-Methods"),
+        )
+        self.assertIn(
+            "Content-Type",
+            response.getheader("Access-Control-Allow-Headers"),
+        )
+
+    def test_api_json_response_allows_cross_origin_browser_read(self):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=3)
+        connection.request(
+            "POST",
+            "/api/session",
+            body=json.dumps({"loopCount": 3}),
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "https://html-classic.itch.zone",
+            },
+        )
+        response = connection.getresponse()
+        data = json.loads(response.read().decode("utf-8"))
+        connection.close()
+
+        self.assertEqual(response.status, 201)
+        self.assertIn("sessionId", data)
+        self.assertEqual(response.getheader("Access-Control-Allow-Origin"), "*")
+
     def test_action_returns_narration_and_passes_story_state(self):
         status, data = self.request(
             "POST",

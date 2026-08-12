@@ -12,3 +12,6 @@ The backend is organized by long-term responsibility rather than development-nod
 numbers: authoritative game rules, Game Agent interpretation, Story Agent narration,
 application coordination, and infrastructure adapters. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+For the minimal friends-only itch.io and Render test setup, see
+[`docs/render-test-deployment.md`](docs/render-test-deployment.md).

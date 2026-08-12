@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +31,12 @@ from backend.infrastructure.session_store import (
 
 MAX_ACTION_LENGTH = 500
 MAX_REQUEST_BYTES = 4096
+API_PATHS = {
+    "/api/action",
+    "/api/session",
+    "/api/session/reset",
+    "/api/turn",
+}
 
 
 class StoryRequestHandler(SimpleHTTPRequestHandler):
@@ -52,14 +59,21 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def do_OPTIONS(self) -> None:
+        path = urlsplit(self.path).path
+        if path not in API_PATHS:
+            self._send_json(404, {"error": "Endpoint not found."})
+            return
+
+        self.send_response(204)
+        self._send_cors_headers()
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "public, max-age=600")
+        self.end_headers()
+
     def do_POST(self) -> None:
         path = urlsplit(self.path).path
-        if path not in {
-            "/api/action",
-            "/api/session",
-            "/api/session/reset",
-            "/api/turn",
-        }:
+        if path not in API_PATHS:
             self._send_json(404, {"error": "Endpoint not found."})
             return
 
@@ -298,8 +312,15 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_cors_headers(self) -> None:
+        """Allow the browser-hosted itch.io build to call this test API."""
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
 
 def create_server(
@@ -327,8 +348,9 @@ def create_server(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Serve the Twine story and Agent APIs.")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    default_host = "0.0.0.0" if os.getenv("RENDER") else "127.0.0.1"
+    parser.add_argument("--host", default=default_host)
+    parser.add_argument("--port", type=int, default=os.getenv("PORT", "8000"))
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
