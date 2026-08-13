@@ -79,6 +79,18 @@ class StorySourceTests(unittest.TestCase):
         self.assertNotIn("#151915", self.source)
         self.assertNotIn("rgba(8, 10, 8", self.source)
 
+    def test_story_prose_uses_compact_paragraph_spacing(self):
+        self.assertIn("margin: 0 0 0.75rem;", self.source)
+        self.assertIn("function normalizeStoryParagraphSpacing()", self.source)
+        self.assertIn('paragraphBreak.className = "story-paragraph-break";', self.source)
+        self.assertIn("normalizeStoryParagraphSpacing();", self.source)
+        self.assertIn("margin-top: 0.65rem;", self.source)
+        self.assertNotIn(
+            "I can retrace my steps, test another part of the world, return to the old script, "
+            "speak, wait, or try something the written story never anticipated.",
+            self.source,
+        )
+
     def test_story_input_keeps_an_opaque_light_surface_in_embedded_browsers(self):
         self.assertIn("color-scheme: only light;", self.source)
         self.assertIn("background: var(--paper-clear);", self.source)

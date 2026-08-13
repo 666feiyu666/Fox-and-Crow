@@ -428,10 +428,20 @@ body::before {
 }
 
 .passage p {
-    margin: 0 0 1.1rem;
+    margin: 0 0 0.75rem;
     color: var(--ink);
     font-size: clamp(1rem, 2.8vw, 1.14rem);
-    line-height: 1.85;
+    line-height: 1.65;
+}
+
+.story-copy {
+    line-height: 1.65;
+}
+
+.story-paragraph-break {
+    display: block;
+    height: 0;
+    margin-top: 0.65rem;
 }
 
 .memory {
@@ -978,6 +988,37 @@ function storyTextFrom(node) {
     }).join("\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function normalizeStoryParagraphSpacing() {
+    document.querySelectorAll(".story-copy").forEach(function (copy) {
+        var nodes = Array.from(copy.childNodes);
+        for (var index = 0; index < nodes.length;) {
+            if (nodes[index].nodeName !== "BR") {
+                index += 1;
+                continue;
+            }
+            var runStart = index;
+            while (index < nodes.length && nodes[index].nodeName === "BR") {
+                index += 1;
+            }
+            var previous = nodes.slice(0, runStart).reverse().find(function (node) {
+                return node.nodeType !== Node.TEXT_NODE || node.textContent.trim();
+            });
+            var next = nodes.slice(index).find(function (node) {
+                return node.nodeType !== Node.TEXT_NODE || node.textContent.trim();
+            });
+            if (previous && next && previous.nodeType === Node.TEXT_NODE && next.nodeType === Node.TEXT_NODE) {
+                var paragraphBreak = document.createElement("span");
+                paragraphBreak.className = "story-paragraph-break";
+                paragraphBreak.setAttribute("aria-hidden", "true");
+                copy.insertBefore(paragraphBreak, nodes[runStart]);
+            }
+            nodes.slice(runStart, index).forEach(function (node) {
+                node.remove();
+            });
+        }
+    });
+}
+
 function captureCurrentStoryScene() {
     var scene = document.querySelector(".story-scene[data-log-scene]");
     if (!scene) {
@@ -1209,6 +1250,7 @@ $(document).on("click", ".story-restart-confirm", function () {
 });
 
 $(document).on(":passagedisplay", function () {
+    normalizeStoryParagraphSpacing();
     captureCurrentStoryScene();
     renderDynamicResult();
     document.querySelectorAll(".ai-action-form").forEach(function (form) {
@@ -1762,8 +1804,6 @@ I wake beneath the same tree, with the same crow above me and morning arranged e
 <<if $explorationRoute>>
 <div class="memory">I remember the route I chose beyond the clearing and the marker I left before the world rewound.</div>
 <</if>>
-
-I can retrace my steps, test another part of the world, return to the old script, speak, wait, or try something the written story never anticipated.
 </div>
 </section>
 
