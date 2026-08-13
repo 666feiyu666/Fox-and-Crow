@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "interactive-project/v1",
+  "id": "fox-and-crow-loop",
+  "title": "The Fox and the Crow: A Day in Loop",
+  "interaction": {
+    "story": "src/story.twee"
+  },
+  "media": {
+    "config": "media/project.json",
+    "manifest": "dist/media/manifest.json"
+  }
+}

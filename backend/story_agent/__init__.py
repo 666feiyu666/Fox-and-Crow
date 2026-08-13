@@ -1,1 +1,1 @@
-"""Narrative generation and grounding boundaries."""
+"""Story Agent boundary for player-visible narrative continuation."""

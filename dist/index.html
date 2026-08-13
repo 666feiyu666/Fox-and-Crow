@@ -100,21 +100,28 @@ var saveAs=saveAs||navigator.msSaveBlob&&navigator.msSaveBlob.bind(navigator)||f
 		<div id="init-lacking">Your browser lacks required capabilities. Please upgrade it or switch to another to continue.</div>
 		<div id="init-loading"><div>Loading&hellip;</div></div>
 	</div>
-	<!-- UUID://7A4F23F7-9B8B-4E75-9E84-3A626B435833// --><tw-storydata name="The Fox and the Crow: A Day in Loop" startnode="5" creator="Tweego" creator-version="2.1.1+81d1d71" ifid="7A4F23F7-9B8B-4E75-9E84-3A626B435833" zoom="1" format="SugarCube" format-version="2.30.0" options="" hidden><style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap");
+	<!-- UUID://7A4F23F7-9B8B-4E75-9E84-3A626B435833// --><tw-storydata name="The Fox and the Crow: A Day in Loop" startnode="4" creator="Tweego" creator-version="2.1.1+81d1d71" ifid="7A4F23F7-9B8B-4E75-9E84-3A626B435833" zoom="1" format="SugarCube" format-version="2.30.0" options="" hidden><style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif:wght@400;600&family=Source+Sans+3:wght@500;600;700&display=swap");
 
 :root {
-    color-scheme: dark;
-    --ink: #f8f0dc;
-    --muted: #c6b99f;
-    --accent: #f1b24a;
-    --accent-strong: #ffd07d;
-    --panel: rgba(28, 25, 21, 0.88);
-    --line: rgba(241, 178, 74, 0.28);
+    color-scheme: light;
+    --paper: #f1ecda;
+    --paper-clear: #fbf8ec;
+    --paper-deep: #ded6bd;
+    --ink: #38372f;
+    --muted: #6e6a5e;
+    --accent: #69765b;
+    --accent-strong: #46513e;
+    --accent-soft: rgba(105, 118, 91, 0.12);
+    --panel: rgba(250, 247, 233, 0.92);
+    --line: rgba(61, 60, 51, 0.24);
+    --line-soft: rgba(61, 60, 51, 0.12);
+    --danger: #854f40;
+    --ui-font: "Source Sans 3", "Segoe UI", sans-serif;
 }
 
 html {
     min-height: 100%;
-    background: #151915;
+    background: var(--paper-deep);
 }
 
 body {
@@ -122,8 +129,9 @@ body {
     margin: 0;
     color: var(--ink);
     background:
-        radial-gradient(circle at 50% 8%, rgba(214, 145, 48, 0.18), transparent 34rem),
-        linear-gradient(180deg, #273128 0%, #151915 62%, #101210 100%);
+        radial-gradient(circle at 50% 2%, rgba(255, 253, 243, 0.92), transparent 36rem),
+        radial-gradient(circle at 12% 58%, rgba(117, 128, 99, 0.07), transparent 28rem),
+        linear-gradient(180deg, #eee8d4 0%, #e4ddc7 100%);
     font-family: "Noto Serif", Georgia, serif;
 }
 
@@ -132,11 +140,12 @@ body::before {
     inset: 0;
     z-index: -1;
     content: "";
-    opacity: 0.26;
+    opacity: 0.5;
     background-image:
-        linear-gradient(115deg, transparent 49%, rgba(255, 255, 255, 0.035) 50%, transparent 51%),
-        linear-gradient(25deg, transparent 49%, rgba(255, 255, 255, 0.025) 50%, transparent 51%);
-    background-size: 46px 46px, 62px 62px;
+        repeating-linear-gradient(8deg, transparent 0 17px, rgba(65, 63, 54, 0.018) 18px, transparent 19px),
+        repeating-linear-gradient(97deg, transparent 0 23px, rgba(65, 63, 54, 0.014) 24px, transparent 25px);
+    background-size: 92px 92px, 118px 118px;
+    pointer-events: none;
 }
 
 #ui-bar {
@@ -148,9 +157,9 @@ body::before {
 }
 
 #passages {
-    width: min(42rem, calc(100% - 2.5rem));
+    width: min(46rem, calc(100% - 2.5rem));
     margin: 0 auto;
-    padding: 9vh 0 12vh;
+    padding: 7vh 0 12vh;
 }
 
 .story-header {
@@ -158,8 +167,8 @@ body::before {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1.5rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px solid var(--line);
+    padding: 0 0.25rem 0.9rem;
+    border-bottom: 1px solid rgba(56, 55, 47, 0.36);
 }
 
 .story-header p {
@@ -173,15 +182,22 @@ body::before {
 }
 
 .eyebrow {
-    color: var(--accent);
+    color: var(--ink);
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.24em;
 }
 
+.version-badge {
+    margin-top: 0.3rem !important;
+    color: var(--muted);
+    font: 700 0.64rem/1.2 var(--ui-font);
+    letter-spacing: 0.12em;
+}
+
 .loop-counter {
     color: var(--muted);
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.76rem;
     letter-spacing: 0.08em;
 }
@@ -192,11 +208,11 @@ body::before {
 .story-restart-open,
 .story-restart-cancel,
 .story-restart-confirm {
-    border: 1px solid rgba(241, 178, 74, 0.48);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.5);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.07);
-    font: 600 0.78rem/1.2 system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.54);
+    font: 600 0.78rem/1.2 var(--ui-font);
     letter-spacing: 0.04em;
     cursor: pointer;
 }
@@ -216,7 +232,7 @@ body::before {
 .story-restart-cancel:hover,
 .story-restart-cancel:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
 }
 
@@ -227,15 +243,15 @@ body::before {
     max-height: min(90vh, 54rem);
     padding: 0;
     overflow: hidden;
-    border: 1px solid rgba(241, 178, 74, 0.36);
-    border-radius: 3px;
+    border: 1px solid rgba(56, 55, 47, 0.36);
+    border-radius: 1px;
     color: var(--ink);
-    background: #171914;
-    box-shadow: 0 2rem 7rem rgba(0, 0, 0, 0.72);
+    background: var(--paper-clear);
+    box-shadow: 0 2rem 7rem rgba(63, 57, 43, 0.28);
 }
 
 .story-log-dialog::backdrop {
-    background: rgba(5, 8, 6, 0.82);
+    background: rgba(66, 62, 52, 0.38);
     backdrop-filter: blur(3px);
 }
 
@@ -256,14 +272,15 @@ body::before {
 
 .story-log-header h2 {
     margin: 0.2rem 0 0;
-    color: var(--accent-strong);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
     font-size: clamp(1.55rem, 4vw, 2.2rem);
 }
 
 .story-log-eyebrow {
     margin: 0;
     color: var(--muted);
-    font: 700 0.7rem/1.2 system-ui, sans-serif;
+    font: 700 0.7rem/1.2 var(--ui-font);
     letter-spacing: 0.18em;
 }
 
@@ -279,7 +296,7 @@ body::before {
     gap: 0.55rem;
     padding: 1rem clamp(1rem, 4vw, 2rem);
     overflow-x: auto;
-    border-bottom: 1px solid rgba(241, 178, 74, 0.16);
+    border-bottom: 1px solid var(--line-soft);
 }
 
 .story-log-day {
@@ -296,15 +313,16 @@ body::before {
 
 .story-log-day-title {
     margin: 0 0 1.25rem;
-    color: var(--accent-strong);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
     font-size: 1.35rem;
 }
 
 .story-log-entry {
     margin: 0 0 1rem;
     padding: 1rem 1.1rem;
-    border-left: 2px solid rgba(241, 178, 74, 0.52);
-    background: rgba(241, 178, 74, 0.045);
+    border-left: 2px solid rgba(70, 81, 62, 0.48);
+    background: rgba(105, 118, 91, 0.055);
 }
 
 .story-log-entry h4 {
@@ -316,7 +334,7 @@ body::before {
 .story-log-label {
     margin: 0 0 0.45rem;
     color: var(--muted);
-    font: 700 0.7rem/1.2 system-ui, sans-serif;
+    font: 700 0.7rem/1.2 var(--ui-font);
     letter-spacing: 0.15em;
 }
 
@@ -325,12 +343,13 @@ body::before {
 .story-log-empty {
     margin: 0;
     white-space: pre-line;
-    font: 0.92rem/1.65 system-ui, sans-serif;
+    font: 0.92rem/1.65 var(--ui-font);
 }
 
 .story-log-action {
     margin-bottom: 1rem;
     color: var(--accent-strong);
+    font-weight: 600;
 }
 
 .story-log-narration,
@@ -346,7 +365,7 @@ body::before {
     gap: 1rem;
     padding: 1rem clamp(1rem, 4vw, 2rem);
     border-top: 1px solid var(--line);
-    background: rgba(0, 0, 0, 0.16);
+    background: rgba(105, 118, 91, 0.055);
 }
 
 .story-log-footer h3,
@@ -362,23 +381,23 @@ body::before {
 .story-log-footer p {
     margin-top: 0.25rem;
     color: var(--muted);
-    font: 0.8rem/1.45 system-ui, sans-serif;
+    font: 0.8rem/1.45 var(--ui-font);
 }
 
 .story-restart-open,
 .story-restart-confirm {
-    border-color: rgba(217, 116, 86, 0.72);
-    color: #ffd0c1;
-    background: rgba(170, 62, 36, 0.14);
+    border-color: rgba(133, 79, 64, 0.58);
+    color: var(--danger);
+    background: rgba(133, 79, 64, 0.06);
 }
 
 .story-restart-open:hover,
 .story-restart-open:focus-visible,
 .story-restart-confirm:hover,
 .story-restart-confirm:focus-visible {
-    border-color: #ffd0c1;
-    color: #21100b;
-    background: #ffd0c1;
+    border-color: var(--danger);
+    color: var(--paper-clear);
+    background: var(--danger);
 }
 
 .story-restart-confirmation {
@@ -389,7 +408,7 @@ body::before {
     justify-content: space-between;
     gap: 1rem;
     padding: 0.85rem clamp(1rem, 4vw, 2rem);
-    background: #211c17;
+    background: #eee6d2;
 }
 
 .story-restart-confirmation[hidden] {
@@ -403,20 +422,33 @@ body::before {
 }
 
 .passage {
+    position: relative;
     min-height: 22rem;
     padding: clamp(1.5rem, 5vw, 3.5rem);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    border: 1px solid rgba(56, 55, 47, 0.26);
+    border-radius: 1px;
     background: var(--panel);
-    box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.3);
+    box-shadow:
+        inset 0 0 0 4px rgba(255, 253, 244, 0.38),
+        0 1.5rem 4.5rem rgba(68, 61, 46, 0.14);
+}
+
+.passage::before {
+    position: absolute;
+    inset: 0.55rem;
+    border: 1px solid rgba(56, 55, 47, 0.08);
+    content: "";
+    pointer-events: none;
 }
 
 .passage h1 {
     margin: 0 0 1.7rem;
-    color: var(--accent-strong);
-    font-size: clamp(1.75rem, 5vw, 2.6rem);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(2.1rem, 6vw, 3.1rem);
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
+    line-height: 1.02;
 }
 
 .passage p {
@@ -431,7 +463,7 @@ body::before {
     padding: 0.8rem 1rem;
     border-left: 2px solid var(--accent);
     color: var(--muted);
-    background: rgba(241, 178, 74, 0.07);
+    background: var(--accent-soft);
     font-size: 0.92rem;
     line-height: 1.7;
 }
@@ -439,7 +471,7 @@ body::before {
 .choice-label {
     margin-top: 2.5rem !important;
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.75rem !important;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -450,11 +482,11 @@ body::before {
     display: block;
     margin-top: 0.7rem;
     padding: 1rem 1.15rem;
-    border: 1px solid rgba(241, 178, 74, 0.52);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.5);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font-family: system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.5);
+    font-family: var(--ui-font);
     font-size: 0.98rem;
     text-decoration: none;
     transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
@@ -463,9 +495,19 @@ body::before {
 .passage a.link-internal:hover,
 .passage a.link-internal:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
     transform: translateY(-1px);
+}
+
+.welcome-actions a:first-of-type {
+    color: var(--paper-clear);
+    background: var(--accent-strong);
+}
+
+.welcome-actions a:first-of-type:hover,
+.welcome-actions a:first-of-type:focus-visible {
+    background: #35402f;
 }
 
 .ai-action-panel {
@@ -474,18 +516,79 @@ body::before {
     border-top: 1px solid var(--line);
 }
 
+.input-mode-fieldset {
+    margin: 1.15rem 0 0.85rem;
+    padding: 0;
+    border: 0;
+}
+
+.input-mode-fieldset legend {
+    margin-bottom: 0.55rem;
+    color: var(--muted);
+    font: 700 0.72rem/1.2 var(--ui-font);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.input-mode-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.input-mode-option {
+    position: relative;
+    display: block;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(56, 55, 47, 0.28);
+    color: var(--muted);
+    background: rgba(255, 253, 244, 0.44);
+    font: 600 0.9rem/1.35 var(--ui-font);
+    cursor: pointer;
+}
+
+.input-mode-option:has(input:checked) {
+    border-color: var(--accent-strong);
+    color: var(--ink);
+    background: var(--accent-soft);
+    box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.input-mode-option input {
+    position: absolute;
+    opacity: 0;
+}
+
+.input-mode-option small {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 400;
+    opacity: 0.82;
+}
+
+.welcome-actions {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.welcome-note {
+    color: var(--muted) !important;
+    font: 0.84rem/1.6 var(--ui-font) !important;
+}
+
 .learned-actions-panel {
     margin-top: 2rem;
     padding: 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.28);
-    background: rgba(241, 178, 74, 0.04);
+    border: 1px solid var(--line);
+    background: rgba(255, 253, 244, 0.34);
 }
 
 .learned-actions-panel h2 {
     margin: 0 0 0.45rem;
-    color: var(--accent-strong);
-    font-size: 1.05rem;
-    font-weight: 600;
+    color: var(--ink);
+    font: 600 1.2rem/1.2 "Cormorant Garamond", Georgia, serif;
 }
 
 .learned-actions-list {
@@ -496,65 +599,84 @@ body::before {
 
 .learned-action-choice {
     padding: 0.8rem 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.52);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.45);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font: 0.98rem/1.4 system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.58);
+    font: 600 0.94rem/1.4 var(--ui-font);
     text-align: left;
     cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .learned-action-choice:hover,
 .learned-action-choice:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
 }
 
 .ai-action-panel h2 {
     margin: 0 0 0.65rem;
-    color: var(--accent-strong);
-    font-size: 1.15rem;
-    font-weight: 600;
+    color: var(--ink);
+    font: 600 1.35rem/1.2 "Cormorant Garamond", Georgia, serif;
 }
 
 .ai-action-help,
 .ai-action-status {
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.88rem !important;
     line-height: 1.55 !important;
 }
 
 .ai-action-input {
+    color-scheme: only light;
     box-sizing: border-box;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 6.5rem;
     margin-top: 0.35rem;
     padding: 0.9rem 1rem;
     resize: vertical;
-    border: 1px solid rgba(241, 178, 74, 0.4);
-    border-radius: 2px;
+    border: 1px solid rgba(56, 55, 47, 0.38);
+    border-radius: 1px;
     color: var(--ink);
-    background: rgba(8, 10, 8, 0.55);
-    font: 0.98rem/1.55 system-ui, sans-serif;
+    background: var(--paper-clear);
+    box-shadow: inset 0 1px 5px rgba(61, 60, 51, 0.06);
+    caret-color: var(--accent-strong);
+    -webkit-text-fill-color: var(--ink);
+    font: 0.98rem/1.55 var(--ui-font);
+}
+
+.ai-action-input::placeholder {
+    color: rgba(86, 82, 71, 0.65);
+    -webkit-text-fill-color: rgba(86, 82, 71, 0.65);
+    opacity: 1;
 }
 
 .ai-action-input:focus {
-    outline: 2px solid rgba(255, 208, 125, 0.35);
+    outline: 2px solid rgba(105, 118, 91, 0.2);
     border-color: var(--accent-strong);
 }
 
 .ai-action-submit {
     margin-top: 0.75rem;
     padding: 0.8rem 1rem;
-    border: 1px solid var(--accent);
-    border-radius: 2px;
-    color: #17130d;
-    background: var(--accent);
-    font: 600 0.92rem system-ui, sans-serif;
+    border: 1px solid var(--accent-strong);
+    border-radius: 1px;
+    color: var(--paper-clear);
+    background: var(--accent-strong);
+    font: 600 0.92rem var(--ui-font);
     cursor: pointer;
+    transition: background 150ms ease, transform 150ms ease;
+}
+
+.ai-action-submit:hover,
+.ai-action-submit:focus-visible {
+    background: #35402f;
+    transform: translateY(-1px);
 }
 
 .ai-action-submit:disabled {
@@ -567,7 +689,7 @@ body::before {
     padding: 1rem;
     border-left: 2px solid var(--accent);
     color: var(--ink);
-    background: rgba(241, 178, 74, 0.07);
+    background: var(--accent-soft);
     font-size: 1rem;
     line-height: 1.75;
 }
@@ -577,7 +699,7 @@ body::before {
     margin: 0 0 1.5rem;
     padding: 1rem;
     border-left: 2px solid var(--accent);
-    background: rgba(241, 178, 74, 0.07);
+    background: rgba(105, 118, 91, 0.08);
     font-size: 1rem;
     line-height: 1.75;
 }
@@ -585,36 +707,14 @@ body::before {
 .generated-action-player {
     border-left-color: var(--muted);
     color: var(--muted);
-    font-family: system-ui, sans-serif;
+    background: rgba(222, 214, 189, 0.36);
+    font-family: var(--ui-font);
 }
 
 .generated-action-memory {
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.88rem !important;
-}
-
-.fox-memory-panel {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.28);
-    background: rgba(241, 178, 74, 0.04);
-}
-
-.fox-memory-panel h2 {
-    margin: 0 0 0.55rem;
-    color: var(--accent-strong);
-    font-size: 1rem;
-}
-
-.fox-memory-list {
-    margin: 0;
-    color: var(--muted);
-    font: 0.88rem/1.65 system-ui, sans-serif;
-}
-
-.fox-memory-list {
-    padding-left: 1.25rem;
 }
 
 .outcome-banner {
@@ -622,8 +722,8 @@ body::before {
     padding: 0.85rem 1rem;
     border-left: 2px solid var(--accent);
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font: 600 0.92rem/1.55 system-ui, sans-serif;
+    background: var(--accent-soft);
+    font: 600 0.92rem/1.55 var(--ui-font);
 }
 
 @media (max-width: 520px) {
@@ -670,9 +770,11 @@ body::before {
     .story-restart-actions button {
         flex: 1 1 50%;
     }
-}</style><script role="script" id="twine-user-script" type="text/twine-javascript">// The itch.io build calls the Render API. Local development can temporarily
-// set this to an empty string when using the same-origin server.
-var storyApiBaseUrl = "https://fox-and-crow-story-api.onrender.com";
+
+}</style><script role="script" id="twine-user-script" type="text/twine-javascript">// Local builds use the same-origin server; itch.io calls the hosted Render API.
+var storyApiBaseUrl = ["127.0.0.1", "localhost"].includes(window.location.hostname)
+    ? ""
+    : "https://fox-and-crow-story-api.onrender.com";
 var activeStoryRequestController = null;
 var storyRunGeneration = 0;
 var selectedStoryLogDay = null;
@@ -717,7 +819,11 @@ async function postStoryJson(path, payload, signal) {
 
 function syncPlayerState(playerState) {
     State.variables.loopCount = playerState.loopCount;
-    State.variables.foxMemories = playerState.memories || [];
+    State.variables.elapsedUnits = playerState.elapsedUnits;
+    State.variables.remainingUnits = playerState.remainingUnits;
+    State.variables.totalUnits = playerState.totalUnits;
+    State.variables.timePhase = playerState.timePhase;
+    State.variables.storyFirstActive = true;
 }
 
 async function ensureGameSession(signal) {
@@ -725,7 +831,7 @@ async function ensureGameSession(signal) {
         return State.variables.gameSessionId;
     }
     var created = await postStoryJson("/api/session", {
-        loopCount: Math.max(3, State.variables.loopCount || 3)
+        loopCount: Math.max(1, State.variables.loopCount || 1)
     }, signal);
     State.variables.gameSessionId = created.sessionId;
     syncPlayerState(created.playerState);
@@ -736,15 +842,19 @@ async function submitPlayerAction(form) {
     var input = form.querySelector(".ai-action-input");
     var button = form.querySelector(".ai-action-submit");
     var status = form.querySelector(".ai-action-status");
+    var selectedType = form.querySelector('input[name="story-input-type"]:checked');
+    var inputType = selectedType ? selectedType.value : State.variables.storyInputType;
     var action = input.value.trim();
 
     if (!action) {
-        status.textContent = "Enter an action first.";
+        status.textContent = inputType === "say"
+            ? "Enter one line for the fox to say."
+            : "Enter one main action for the fox to try.";
         return;
     }
 
     button.disabled = true;
-    status.textContent = "The world listens, then answers...";
+    status.textContent = "The story is waking and listening. The first response may take a moment...";
     var actionDay = currentStoryDay();
     var requestGeneration = storyRunGeneration;
     var requestController = new AbortController();
@@ -754,22 +864,26 @@ async function submitPlayerAction(form) {
         var sessionId = await ensureGameSession(requestController.signal);
         var body = await postStoryJson("/api/turn", {
             sessionId: sessionId,
-            action: action
+            inputType: inputType,
+            content: action
         }, requestController.signal);
         if (requestGeneration !== storyRunGeneration) {
             return;
         }
         recordStoryEntry(actionDay, {
             title: "What Follows",
-            action: action,
-            story: body.narration
+            inputType: body.storyEntry.inputType,
+            action: body.storyEntry.playerInput,
+            story: body.storyEntry.narration
         });
         syncPlayerState(body.playerState);
         State.variables.currentTurn = {
-            action: action,
-            narration: body.narration,
+            inputType: body.storyEntry.inputType,
+            action: body.storyEntry.playerInput,
+            narration: body.storyEntry.narration,
             outcome: body.outcome
         };
+        State.variables.storyInputType = inputType;
         input.value = "";
         Engine.play("Dynamic Result");
     }
@@ -788,8 +902,43 @@ async function submitPlayerAction(form) {
 }
 
 function currentStoryDay() {
+    if (State.variables.storyFirstActive) {
+        return Math.max(1, Number(State.variables.loopCount || 1));
+    }
     return Math.max(1, Number(State.variables.loopCount || 0) + 1);
 }
+
+function startStoryFirst() {
+    State.variables.storyLog = [];
+    activateFreeStory(1);
+}
+
+function activateFreeStory(loopCount) {
+    State.variables.storyFirstActive = true;
+    State.variables.loopCount = loopCount;
+    State.variables.elapsedUnits = 0;
+    State.variables.remainingUnits = 6;
+    State.variables.totalUnits = 6;
+    State.variables.timePhase = "morning";
+    State.variables.storyInputType = "say";
+    State.variables.gameSessionId = null;
+    State.variables.currentTurn = null;
+}
+
+function startFullPrologue() {
+    State.variables.storyFirstActive = false;
+    State.variables.loopCount = 0;
+    State.variables.gameSessionId = null;
+    State.variables.currentTurn = null;
+    State.variables.storyLog = [];
+    State.variables.explorationRoute = null;
+    State.variables.explorationMarker = null;
+    State.variables.explorationFinalStep = null;
+}
+
+setup.startStoryFirst = startStoryFirst;
+setup.startFullPrologue = startFullPrologue;
+setup.activateFreeStory = activateFreeStory;
 
 function setPendingStoryAction(action) {
     State.variables.pendingStoryAction = {
@@ -829,6 +978,7 @@ function recordStoryEntry(day, entry) {
     dayRecord.entries.push({
         key: entry.key || null,
         title: entry.title || "What happened",
+        inputType: entry.inputType || null,
         action: entry.action || null,
         story: entry.story
     });
@@ -899,7 +1049,7 @@ function renderStoryLog(day) {
         button.className = "story-log-day";
         button.dataset.day = String(dayRecord.day);
         button.setAttribute("aria-pressed", dayRecord.day === selectedStoryLogDay ? "true" : "false");
-        button.textContent = "Day " + dayRecord.day;
+        button.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + dayRecord.day;
         days.appendChild(button);
     });
 
@@ -908,14 +1058,19 @@ function renderStoryLog(day) {
     });
     var title = document.createElement("h3");
     title.className = "story-log-day-title";
-    title.textContent = "Day " + selected.day;
+    title.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + selected.day;
     content.appendChild(title);
 
     selected.entries.forEach(function (entry) {
         var article = document.createElement("article");
         article.className = "story-log-entry";
         if (entry.action) {
-            appendStoryLogText(article, "YOUR ACTION", entry.action, "story-log-action");
+            appendStoryLogText(
+                article,
+                entry.inputType === "say" ? "YOU SAID" : "YOU DID",
+                entry.action,
+                "story-log-action"
+            );
             appendStoryLogText(article, "WHAT FOLLOWED", entry.story, "story-log-narration", entry.title);
         }
         else {
@@ -1000,26 +1155,6 @@ async function restartStory() {
     Engine.restart();
 }
 
-function renderFoxMemories() {
-    var list = document.querySelector(".fox-memory-list");
-    if (!list) {
-        return;
-    }
-    var memories = State.variables.foxMemories || [];
-    list.replaceChildren();
-    if (memories.length === 0) {
-        var empty = document.createElement("li");
-        empty.textContent = "Only the certainty that this day has happened before.";
-        list.appendChild(empty);
-        return;
-    }
-    memories.forEach(function (memory) {
-        var item = document.createElement("li");
-        item.textContent = memory;
-        list.appendChild(item);
-    });
-}
-
 function renderDynamicResult() {
     if (State.passage !== "Dynamic Result") {
         return;
@@ -1030,21 +1165,35 @@ function renderDynamicResult() {
     }
     document.querySelector(".generated-action-player").textContent = turn.action;
     document.querySelector(".generated-action-narration").textContent = turn.narration;
+    document.querySelector(".generated-action-label").textContent =
+        turn.inputType === "say" ? "You said" : "You did";
     var banner = document.querySelector(".outcome-banner");
-    if (turn.outcome === "loop_escaped") {
-        banner.textContent = "The evening arrives—and for the first time, it does not rewind.";
+    var loopAdvanced = turn.outcome === "loop_advanced";
+    banner.hidden = !loopAdvanced;
+    banner.textContent = loopAdvanced
+        ? "Time runs out. The clearing folds back into morning, and the next loop begins."
+        : "";
+}
+
+function updateStoryInputMode(form) {
+    var selected = form.querySelector('input[name="story-input-type"]:checked');
+    var input = form.querySelector(".ai-action-input");
+    if (!selected || !input) {
+        return;
     }
-    else if (turn.outcome === "loop_reset" || turn.outcome === "fox_starved") {
-        banner.textContent = "You wake beneath the same tree, carrying only what you remember.";
-    }
-    else {
-        banner.textContent = "The afternoon light shifts through the leaves. There is still time to act.";
-    }
+    State.variables.storyInputType = selected.value;
+    input.placeholder = selected.value === "say"
+        ? "For example: Have we met before?"
+        : "For example: I leave the clearing and follow the stream.";
 }
 
 $(document).on("submit", ".ai-action-form", function (event) {
     event.preventDefault();
     submitPlayerAction(this);
+});
+
+$(document).on("change", 'input[name="story-input-type"]', function () {
+    updateStoryInputMode(this.form);
 });
 
 $(document).on("click", ".story-log-open", function () {
@@ -1074,21 +1223,42 @@ $(document).on("click", ".story-restart-confirm", function () {
 
 $(document).on(":passagedisplay", function () {
     captureCurrentStoryScene();
-    renderFoxMemories();
     renderDynamicResult();
-});</script><tw-passagedata pid="1" name="StoryInit" tags="" position="100,100" size="100,100">&lt;&lt;set $loopCount = 0&gt;&gt;
+    document.querySelectorAll(".ai-action-form").forEach(function (form) {
+        var preferred = form.querySelector(
+            'input[name="story-input-type"][value="' + State.variables.storyInputType + '"]'
+        );
+        if (preferred) {
+            preferred.checked = true;
+        }
+        updateStoryInputMode(form);
+    });
+});</script><tw-passagedata pid="1" name="StoryInit" tags="" position="100,100" size="100,100">&lt;&lt;set $loopCount = 1&gt;&gt;
 &lt;&lt;set $learnedActions = {}&gt;&gt;
 &lt;&lt;set $generatedTurn = null&gt;&gt;
 &lt;&lt;set $gameSessionId = null&gt;&gt;
 &lt;&lt;set $currentTurn = null&gt;&gt;
-&lt;&lt;set $foxMemories = []&gt;&gt;
 &lt;&lt;set $storyLog = []&gt;&gt;
-&lt;&lt;set $pendingStoryAction = null&gt;&gt;</tw-passagedata><tw-passagedata pid="2" name="PassageHeader" tags="nobr" position="225,100" size="100,100">&lt;header class=&quot;story-header&quot;&gt;
-    &lt;p class=&quot;eyebrow&quot;&gt;THE FOX AND THE CROW&lt;/p&gt;
+&lt;&lt;set $pendingStoryAction = null&gt;&gt;
+&lt;&lt;set $storyFirstActive = false&gt;&gt;
+&lt;&lt;set $storyInputType = &quot;say&quot;&gt;&gt;
+&lt;&lt;set $elapsedUnits = 0&gt;&gt;
+&lt;&lt;set $remainingUnits = 6&gt;&gt;
+&lt;&lt;set $totalUnits = 6&gt;&gt;
+&lt;&lt;set $timePhase = &quot;morning&quot;&gt;&gt;
+&lt;&lt;set $explorationRoute = null&gt;&gt;
+&lt;&lt;set $explorationMarker = null&gt;&gt;
+&lt;&lt;set $explorationFinalStep = null&gt;&gt;</tw-passagedata><tw-passagedata pid="2" name="PassageHeader" tags="nobr" position="225,100" size="100,100">&lt;header class=&quot;story-header&quot;&gt;
+    &lt;div&gt;
+        &lt;p class=&quot;eyebrow&quot;&gt;THE FOX AND THE CROW&lt;/p&gt;
+        &lt;p class=&quot;version-badge&quot;&gt;STORY-FIRST · NODE 2.5&lt;/p&gt;
+    &lt;/div&gt;
     &lt;div class=&quot;story-header-actions&quot;&gt;
-        &lt;&lt;if State.passage is &quot;New Tomorrow&quot;&gt;&gt;
+        &lt;&lt;if State.passage is &quot;Welcome&quot;&gt;&gt;
+            &lt;p class=&quot;loop-counter&quot;&gt;NODE 2.5 PREVIEW&lt;/p&gt;
+        &lt;&lt;elseif not $storyFirstActive and State.passage is &quot;New Tomorrow&quot;&gt;&gt;
             &lt;p class=&quot;loop-counter&quot;&gt;NEW TOMORROW&lt;/p&gt;
-        &lt;&lt;else&gt;&gt;
+        &lt;&lt;elseif not $storyFirstActive&gt;&gt;
             &lt;p class=&quot;loop-counter&quot;&gt;DAY &lt;&lt;print $loopCount + 1&gt;&gt;&lt;/p&gt;
         &lt;&lt;/if&gt;&gt;
         &lt;button class=&quot;story-log-open&quot; type=&quot;button&quot;&gt;Story Log&lt;/button&gt;
@@ -1121,174 +1291,498 @@ $(document).on(":passagedisplay", function () {
             &lt;/div&gt;
         &lt;/footer&gt;
     &lt;/div&gt;
-&lt;/dialog&gt;</tw-passagedata><tw-passagedata pid="3" name="PassageFooter" tags="" position="350,100" size="100,100">&lt;&lt;if State.passage is &quot;Dynamic Morning&quot;&gt;&gt;
+&lt;/dialog&gt;</tw-passagedata><tw-passagedata pid="3" name="PassageFooter" tags="" position="350,100" size="100,100">&lt;&lt;if State.passage is &quot;Dynamic Morning&quot; or State.passage is &quot;Dynamic Result&quot;&gt;&gt;
 &lt;section class=&quot;ai-action-panel&quot;&gt;
-    &lt;h2&gt;What do you do?&lt;/h2&gt;
-    &lt;p class=&quot;ai-action-help&quot;&gt;Describe what the fox says or does. The story will continue from your action.&lt;/p&gt;
+    &lt;h2&gt;What do you say or do?&lt;/h2&gt;
+    &lt;p class=&quot;ai-action-help&quot;&gt;Choose one input type, then enter one spoken line or one main action.&lt;/p&gt;
     &lt;form class=&quot;ai-action-form&quot;&gt;
-        &lt;textarea class=&quot;ai-action-input&quot; maxlength=&quot;500&quot; required placeholder=&quot;For example: I ask the crow why she seems troubled.&quot;&gt;&lt;/textarea&gt;
-        &lt;button class=&quot;ai-action-submit&quot; type=&quot;submit&quot;&gt;Act&lt;/button&gt;
+        &lt;fieldset class=&quot;input-mode-fieldset&quot;&gt;
+            &lt;legend&gt;Input type&lt;/legend&gt;
+            &lt;div class=&quot;input-mode-options&quot;&gt;
+                &lt;label class=&quot;input-mode-option&quot;&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;story-input-type&quot; value=&quot;say&quot; checked&gt;
+                    SAY · Speak
+                    &lt;small&gt;The fox says these exact words.&lt;/small&gt;
+                &lt;/label&gt;
+                &lt;label class=&quot;input-mode-option&quot;&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;story-input-type&quot; value=&quot;do&quot;&gt;
+                    DO · Act
+                    &lt;small&gt;The fox attempts one main action.&lt;/small&gt;
+                &lt;/label&gt;
+            &lt;/div&gt;
+        &lt;/fieldset&gt;
+        &lt;textarea class=&quot;ai-action-input&quot; maxlength=&quot;500&quot; required placeholder=&quot;For example: Have we met before?&quot;&gt;&lt;/textarea&gt;
+        &lt;button class=&quot;ai-action-submit&quot; type=&quot;submit&quot;&gt;Continue the story&lt;/button&gt;
         &lt;p class=&quot;ai-action-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;
+        &lt;p class=&quot;ai-action-help&quot;&gt;The hosted story may take up to a minute to wake on the first request. If a request fails, your input stays here so you can retry.&lt;/p&gt;
     &lt;/form&gt;
 &lt;/section&gt;
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="4" name="Dynamic Result" tags="generated" position="475,100" size="100,100">&lt;h1&gt;What Follows&lt;/h1&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="4" name="Welcome" tags="" position="475,100" size="100,100">&lt;h1&gt;Enter the Story&lt;/h1&gt;
 
-&lt;p class=&quot;choice-label&quot;&gt;You chose&lt;/p&gt;
+&lt;p&gt;You are the fox in a fable that refuses to end. The crow waits above the clearing, the same day keeps returning, and this time the next line belongs to you.&lt;/p&gt;
+
+&lt;p&gt;Choose whether the fox &lt;strong&gt;says&lt;/strong&gt; something or &lt;strong&gt;does&lt;/strong&gt; one action. The Story Agent will continue what can be seen and heard; only time moves by rule.&lt;/p&gt;
+
+&lt;div class=&quot;welcome-actions&quot;&gt;
+&lt;&lt;link &quot;Start the Story-first experience&quot;&gt;&gt;
+    &lt;&lt;run setup.startStoryFirst()&gt;&gt;
+    &lt;&lt;goto &quot;Dynamic Morning&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Play the complete fable prologue first&quot;&gt;&gt;
+    &lt;&lt;run setup.startFullPrologue()&gt;&gt;
+    &lt;&lt;goto &quot;Morning&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+&lt;/div&gt;
+
+&lt;p class=&quot;welcome-note&quot;&gt;Node 2.5 preview · No local setup or personal API key is required on the hosted build.&lt;/p&gt;</tw-passagedata><tw-passagedata pid="5" name="Dynamic Result" tags="generated" position="600,100" size="100,100">&lt;h1&gt;What Follows&lt;/h1&gt;
+
+&lt;p class=&quot;choice-label generated-action-label&quot;&gt;You chose&lt;/p&gt;
 &lt;div class=&quot;generated-action-player&quot;&gt;&lt;/div&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;What happened&lt;/p&gt;
 &lt;div class=&quot;generated-action-narration&quot;&gt;&lt;/div&gt;
-&lt;div class=&quot;outcome-banner&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
-
-&lt;&lt;if $currentTurn and $currentTurn.outcome is &quot;loop_escaped&quot;&gt;&gt;
-    [[Step into the new tomorrow-&gt;New Tomorrow]]
-&lt;&lt;else&gt;&gt;
-    [[Continue-&gt;Dynamic Morning]]
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="5" name="Morning" tags="" position="600,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;morning&quot;&gt;
+&lt;div class=&quot;outcome-banner&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;</tw-passagedata><tw-passagedata pid="6" name="Morning" tags="" position="725,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;morning&quot;&gt;
 &lt;&lt;if $loopCount is 0&gt;&gt;
     &lt;h1&gt;The First Morning&lt;/h1&gt;
     &lt;div class=&quot;story-copy&quot;&gt;
-        You wake at the edge of a forest clearing. Your stomach is hollow—you have not found a bite to eat in three days.
+        You wake at the edge of a forest clearing.
+
         Morning light filters through the leaves. High on a branch sits a crow with a piece of cheese in her beak.
     &lt;/div&gt;
 &lt;&lt;elseif $loopCount is 1&gt;&gt;
     &lt;h1&gt;The Morning Again&lt;/h1&gt;
     &lt;div class=&quot;story-copy&quot;&gt;
-        You wake with the taste of cheese already fading from your mouth. The light, the wind, and the exact angle of the crow&#39;s head are all as they were.
-        &lt;div class=&quot;memory&quot;&gt;You remember stealing the cheese. You also remember that it changed nothing.&lt;/div&gt;
+        You wake with the taste of cheese still lingering in your mouth.
+
+        For a moment, you expect to see an empty branch. Instead, the crow is perched above the clearing with a piece of cheese in her beak—just as she was yesterday.
+
+        &lt;div class=&quot;memory&quot;&gt;Another piece? So soon?&lt;/div&gt;
+
+        You stare up at her. She gives no sign that she recognizes the fox who tricked her only yesterday. Has she truly forgotten?
     &lt;/div&gt;
 &lt;&lt;else&gt;&gt;
     &lt;h1&gt;The Third Morning&lt;/h1&gt;
     &lt;div class=&quot;story-copy&quot;&gt;
-        Before you open your eyes, you know where every shadow will fall. The crow is above you again, holding the same cheese.
-        &lt;div class=&quot;memory&quot;&gt;This time you notice something you ignored before: the crow is not merely guarding her food. She keeps glancing anxiously toward the bushes.&lt;/div&gt;
+        Before you open your eyes, you know where the light will fall, how the leaves will stir, and which branch will creak above you.
+
+        The crow is there. The cheese is there. Neither surprises you now.
+
+        For two mornings, that branch has been the whole world: the hunger below, the food above, and the trick between them. But the clearing continues beyond the tree.
+
+        &lt;div class=&quot;memory&quot;&gt;If the day can restore the cheese, what else does it restore?&lt;/div&gt;
     &lt;/div&gt;
 &lt;&lt;/if&gt;&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;What will you do?&lt;/p&gt;
 
-&lt;&lt;link &quot;Watch the crow in the tree&quot;&gt;&gt;
-    &lt;&lt;run setup.setPendingStoryAction(&quot;Watch the crow in the tree&quot;)&gt;&gt;
-    &lt;&lt;goto &quot;Under the Tree&quot;&gt;&gt;
-&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="6" name="Under the Tree" tags="" position="725,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;under-tree&quot;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
+    &lt;&lt;link &quot;Watch the crow in the tree&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Watch the crow in the tree&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Under the Tree&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Go closer and see whether she remembers you&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Go closer and see whether she remembers you&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Under the Tree&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Repeat the familiar story&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Repeat the familiar story&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Under the Tree&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+
+    &lt;&lt;link &quot;Explore the world beyond the tree&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Explore the world beyond the tree&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Explore the Clearing&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+
+    &lt;&lt;link &quot;SAY or DO something else&quot;&gt;&gt;
+        &lt;&lt;run setup.activateFreeStory(3)&gt;&gt;
+        &lt;&lt;goto &quot;Dynamic Morning&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="7" name="Under the Tree" tags="" position="850,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;under-tree&quot;&gt;
 &lt;h1&gt;Under the Tree&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
 You step beneath the branch and look up. The cheese is held tight in the crow&#39;s closed beak, its pale edge catching the morning light.
 
 If you can make her open her beak, the cheese will fall.
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+You step beneath the branch. The crow watches you without alarm. There is no anger in her eyes, no embarrassment, not even the caution of someone who has already lost one meal to you.
 
-&lt;&lt;if $loopCount is 1&gt;&gt;
-&lt;div class=&quot;memory&quot;&gt;The thought arrives before you choose it, as though you are repeating someone else&#39;s lines.&lt;/div&gt;
-&lt;&lt;elseif $loopCount is 2&gt;&gt;
-&lt;div class=&quot;memory&quot;&gt;The old trick is waiting for you, but so is the unanswered worry in the crow&#39;s eyes.&lt;/div&gt;
+The cheese is held tight in her closed beak. The same simple plan presents itself again: make her open it, and the cheese will fall.
+
+&lt;div class=&quot;memory&quot;&gt;You decide to repeat yesterday&#39;s words exactly. If she remembers, she cannot possibly fall for them twice.&lt;/div&gt;
+&lt;&lt;else&gt;&gt;
+You step beneath the branch and take your old place. The crow watches without alarm, and the cheese waits in her closed beak.
+
+Every line of the familiar story is ready to be spoken again. You already know where it leads.
 &lt;&lt;/if&gt;&gt;
 &lt;/div&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;An idea comes to you.&lt;/p&gt;
 
-&lt;&lt;link &quot;Begin by praising her feathers&quot;&gt;&gt;
-    &lt;&lt;run setup.setPendingStoryAction(&quot;Begin by praising her feathers&quot;)&gt;&gt;
-    &lt;&lt;goto &quot;Flattery&quot;&gt;&gt;
-&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="7" name="Flattery" tags="" position="850,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;flattery&quot;&gt;
+&lt;&lt;if $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Test her with the same compliment&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Test her with the same compliment&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Flattery&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Begin by praising her feathers&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Begin by praising her feathers&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Flattery&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="8" name="Flattery" tags="" position="975,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;flattery&quot;&gt;
 &lt;h1&gt;Beautiful Feathers&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
 “Good morning, Miss Crow,” you say with your most sincere smile. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
 
 The crow hears your praise and lifts her chest proudly. She still holds the cheese tight, but now she cannot look away.
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+“Good morning, Miss Crow,” you say. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
 
-&lt;&lt;if $loopCount &gt; 0&gt;&gt;
-&lt;div class=&quot;memory&quot;&gt;You already know every word that comes next.&lt;/div&gt;
+The crow lifts her chest proudly.
+
+It is not merely a similar reaction. The tilt of her head, the small ruffle along her neck, even the pleased gleam in her eye arrive exactly when you remember them.
+
+&lt;div class=&quot;memory&quot;&gt;She does not remember. Or the morning will not allow her to.&lt;/div&gt;
+&lt;&lt;else&gt;&gt;
+“Good morning, Miss Crow,” you say. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
+
+The crow lifts her chest proudly, just as she did on both mornings before this one. The third repetition feels less like persuasion than reciting a line whose ending you already know.
 &lt;&lt;/if&gt;&gt;
 &lt;/div&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;One last step.&lt;/p&gt;
 
-&lt;&lt;link &quot;Ask her to sing for you&quot;&gt;&gt;
-    &lt;&lt;run setup.setPendingStoryAction(&quot;Ask her to sing for you&quot;)&gt;&gt;
-    &lt;&lt;goto &quot;The Song&quot;&gt;&gt;
-&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="8" name="The Song" tags="" position="975,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;the-song&quot;&gt;
+&lt;&lt;if $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Ask for the same song&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Ask for the same song&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Song&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Ask her to sing for you&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Ask her to sing for you&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Song&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="9" name="The Song" tags="" position="1100,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;the-song&quot;&gt;
 &lt;h1&gt;The Finest Voice in the Forest&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
 “A crow so beautiful must also have the finest voice in the forest,” you say. “Would you sing a song and let me hear it?”
 
 The crow raises her head. She can hardly wait to prove that your praise is true.
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+“A crow so beautiful must also have the finest voice in the forest,” you continue. “Would you sing a song and let me hear it?”
 
-&lt;&lt;if $loopCount is 2&gt;&gt;
-&lt;div class=&quot;memory&quot;&gt;For one instant she looks toward the bushes again. Then the story pulls both of you back into place.&lt;/div&gt;
+Part of you expects her to clamp her beak shut and expose the joke.
+
+Instead, she raises her head, eager to sing—exactly as before.
+&lt;&lt;else&gt;&gt;
+You give the crow the same invitation to sing. She raises her head at the same moment, ready to complete the familiar scene.
+
+Nothing in the old script resists being repeated.
 &lt;&lt;/if&gt;&gt;
 &lt;/div&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;You wait below.&lt;/p&gt;
 
-&lt;&lt;link &quot;Wait for her to open her beak&quot;&gt;&gt;
-    &lt;&lt;run setup.setPendingStoryAction(&quot;Wait for her to open her beak&quot;)&gt;&gt;
-    &lt;&lt;goto &quot;The Cheese Falls&quot;&gt;&gt;
-&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="9" name="The Cheese Falls" tags="" position="1100,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;cheese-falls&quot;&gt;
+&lt;&lt;if $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Wait and see whether the cheese falls again&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Wait and see whether the cheese falls again&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Cheese Falls&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Wait for her to open her beak&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Wait for her to open her beak&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Cheese Falls&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="10" name="The Cheese Falls" tags="" position="1225,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;cheese-falls&quot;&gt;
 &lt;h1&gt;The Cheese&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
 “Caw—”
 
+&lt;&lt;if $loopCount is 0&gt;&gt;
 The moment the crow opens her beak, the cheese tumbles from the branch. You step forward and catch it neatly.
 
-The familiar trick has worked. Your hunger fades, and you finally have the thing you have pursued since morning.
+The trick has worked. At last, you have something to eat.
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+The cheese falls. Your body moves before surprise can slow it, and you catch the piece neatly between your paws.
 
-&lt;&lt;if $loopCount &gt; 0&gt;&gt;
-&lt;div class=&quot;memory&quot;&gt;Success feels less like victory each time you repeat it.&lt;/div&gt;
+The trick has worked a second time. Yet the cheese feels less like a prize than a piece of evidence.
+
+&lt;div class=&quot;memory&quot;&gt;Yesterday happened. The world put everything back. Whether the crow forgot—or was made to forget—you still cannot tell.&lt;/div&gt;
+&lt;&lt;else&gt;&gt;
+The cheese falls for a third time, and you catch it without effort.
+
+The old story still works. It simply no longer answers the questions that keep you here.
 &lt;&lt;/if&gt;&gt;
 &lt;/div&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;The story should end here.&lt;/p&gt;
 
-&lt;&lt;link &quot;Eat the cheese and face the evening&quot;&gt;&gt;
-    &lt;&lt;run setup.setPendingStoryAction(&quot;Eat the cheese and face the evening&quot;)&gt;&gt;
-    &lt;&lt;goto &quot;Evening&quot;&gt;&gt;
-&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="10" name="Evening" tags="" position="1225,100" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;evening&quot;&gt;
+&lt;&lt;if $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Eat the cheese and watch what the evening does&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Eat the cheese and watch what the evening does&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Evening&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Eat the cheese and face the evening&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Eat the cheese and face the evening&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;Evening&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="11" name="Evening" tags="" position="100,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;evening&quot;&gt;
 &lt;h1&gt;The Day Ends&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
 You have the cheese. By every rule you know, that should mean you have won.
 
 But as the sun sinks behind the trees, the colors drain from the clearing. Shadows slide back to their old places. The wind moves backward through the leaves, and the fullness in your stomach disappears.
 
-Somewhere above, you hear the beat of a crow&#39;s wings. When you open your eyes, you know you will see the same tree, the same crow, and the same piece of cheese.
+Somewhere above, you hear the beat of a crow&#39;s wings.
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+This time you do not mistake success for an ending.
+
+You watch the last light leave the clearing. The taste fades from your mouth. The weight in your stomach vanishes. Leaves lift from the ground and return to their branches.
+
+Just before the darkness closes, you look up at the crow and wonder whether tomorrow she will forget you again.
+&lt;&lt;else&gt;&gt;
+For the third time, evening takes back the cheese and restores the clearing.
+
+Repeating the trick has proved one thing: the familiar story remains available whenever you choose it. But following it again has brought you no closer to understanding the world beyond it.
+&lt;&lt;/if&gt;&gt;
 &lt;/div&gt;
 &lt;/section&gt;
 
 &lt;p class=&quot;choice-label&quot;&gt;Wait...&lt;/p&gt;
 
-&lt;&lt;if $loopCount &lt; 2&gt;&gt;
-    &lt;&lt;link &quot;The day is not ready to let you go.&quot;&gt;&gt;
+&lt;&lt;if $loopCount is 0&gt;&gt;
+    &lt;&lt;link &quot;Sleep till the next day&quot;&gt;&gt;
+        &lt;&lt;set $loopCount += 1&gt;&gt;
+        &lt;&lt;goto &quot;Morning&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;elseif $loopCount is 1&gt;&gt;
+    &lt;&lt;link &quot;Wake up again&quot;&gt;&gt;
         &lt;&lt;set $loopCount += 1&gt;&gt;
         &lt;&lt;goto &quot;Morning&quot;&gt;&gt;
     &lt;&lt;/link&gt;&gt;
 &lt;&lt;else&gt;&gt;
-    &lt;&lt;link &quot;This time, refuse to repeat the old story.&quot;&gt;&gt;
-        &lt;&lt;set $loopCount = 3&gt;&gt;
+    &lt;&lt;link &quot;Begin another morning without a fixed script&quot;&gt;&gt;
+        &lt;&lt;run setup.activateFreeStory(4)&gt;&gt;
         &lt;&lt;goto &quot;Dynamic Morning&quot;&gt;&gt;
     &lt;&lt;/link&gt;&gt;
-&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="11" name="Dynamic Morning" tags="" position="100,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;dynamic-morning&quot;&gt;
-&lt;h1&gt;A Question the Fable Never Asked&lt;/h1&gt;
+&lt;&lt;/if&gt;&gt;</tw-passagedata><tw-passagedata pid="12" name="Explore the Clearing" tags="" position="225,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;explore-clearing&quot;&gt;
+&lt;h1&gt;Beyond the Tree&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;
-The clearing resets for a fourth time. The crow is back on the branch with the cheese, but the old choices no longer feel inevitable.
+You turn away from the branch before the familiar compliment can form.
 
-You remember her anxious glances toward the bushes. You can speak, search, bargain, wait, or try something the written story never anticipated.
+Beyond the clearing, a narrow path passes between two pines. A shallow stream catches the morning light farther downhill. On the opposite side, the grass rises toward a line of dark rocks.
+
+These places were always here. Hunger simply made them irrelevant.
 &lt;/div&gt;
 &lt;/section&gt;
 
-&lt;section class=&quot;fox-memory-panel&quot;&gt;
-    &lt;h2&gt;What the fox remembers&lt;/h2&gt;
-    &lt;ul class=&quot;fox-memory-list&quot;&gt;&lt;/ul&gt;
-&lt;/section&gt;</tw-passagedata><tw-passagedata pid="12" name="New Tomorrow" tags="" position="225,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;new-tomorrow&quot;&gt;
+&lt;p class=&quot;choice-label&quot;&gt;Which part of the world will you explore?&lt;/p&gt;
+
+&lt;&lt;link &quot;Follow the path between the pines&quot;&gt;&gt;
+    &lt;&lt;set $explorationRoute = &quot;pine&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Follow the path between the pines&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The Pine Path&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Walk downstream and study the water&quot;&gt;&gt;
+    &lt;&lt;set $explorationRoute = &quot;stream&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Walk downstream and study the water&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;Downstream&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Circle the edge of the clearing&quot;&gt;&gt;
+    &lt;&lt;set $explorationRoute = &quot;edge&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Circle the edge of the clearing&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The Clearing Edge&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="13" name="The Pine Path" tags="" position="350,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;pine-path&quot;&gt;
+&lt;h1&gt;The Pine Path&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+You follow the narrow path until the old tree disappears behind you.
+
+A hollow stump stands where the path bends. Beside it, yellow flowers grow through a split in the earth. You count your steps and repeat each landmark silently: two pines, the fallen log, the hollow stump, the yellow flowers.
+
+For the first time, the day feels larger than the fable told about it.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;&lt;link &quot;Test whether this path remembers your visit&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Test whether this path remembers your visit&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;A Mark for Tomorrow&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="14" name="Downstream" tags="" position="475,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;downstream&quot;&gt;
+&lt;h1&gt;Downstream&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+You follow the stream away from the clearing.
+
+The water passes over twelve pale stones before slipping beneath a fallen trunk. You watch a leaf turn twice in the same small whirlpool, then continue downstream.
+
+You memorize the stones, the trunk, and the sound of the current. Tomorrow, you will know whether the stream repeats as precisely as the tree.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;&lt;link &quot;Change something beside the stream&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Change something beside the stream&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;A Mark for Tomorrow&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="15" name="The Clearing Edge" tags="" position="600,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;clearing-edge&quot;&gt;
+&lt;h1&gt;The Edge of the Clearing&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+You walk the full boundary of the clearing instead of approaching its center.
+
+On one side, thick ferns conceal the ground. On the other, three dark rocks form a crooked line. Farther around, an animal trail disappears beneath low branches.
+
+You build a map in your memory: tree, rocks, trail, ferns, stream, and back to the tree.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;&lt;link &quot;Leave a marker at the clearing&#39;s edge&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Leave a marker at the clearing&#39;s edge&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;A Mark for Tomorrow&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="16" name="A Mark for Tomorrow" tags="" position="725,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;choose-marker&quot;&gt;
+&lt;h1&gt;A Mark for Tomorrow&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+You choose a place you will recognize when the morning returns. The change must be simple enough to remember and deliberate enough that wind or rain cannot easily explain it away.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;p class=&quot;choice-label&quot;&gt;What mark will you leave?&lt;/p&gt;
+
+&lt;&lt;if $explorationRoute is &quot;pine&quot;&gt;&gt;
+    &lt;&lt;link &quot;Move a smooth white stone into the hollow stump&quot;&gt;&gt;
+        &lt;&lt;set $explorationMarker = &quot;stone&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Move a smooth white stone into the hollow stump&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Marker&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;elseif $explorationRoute is &quot;stream&quot;&gt;&gt;
+    &lt;&lt;link &quot;Move one of the twelve pale stones above the waterline&quot;&gt;&gt;
+        &lt;&lt;set $explorationMarker = &quot;stone&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Move one of the twelve pale stones above the waterline&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Marker&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;else&gt;&gt;
+    &lt;&lt;link &quot;Move the smallest dark rock beyond the crooked line&quot;&gt;&gt;
+        &lt;&lt;set $explorationMarker = &quot;stone&quot;&gt;&gt;
+        &lt;&lt;run setup.setPendingStoryAction(&quot;Move the smallest dark rock beyond the crooked line&quot;)&gt;&gt;
+        &lt;&lt;goto &quot;The Marker&quot;&gt;&gt;
+    &lt;&lt;/link&gt;&gt;
+&lt;&lt;/if&gt;&gt;
+
+&lt;&lt;link &quot;Scratch a small cross into the damp earth&quot;&gt;&gt;
+    &lt;&lt;set $explorationMarker = &quot;cross&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Scratch a small cross into the damp earth&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The Marker&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Stack three fallen twigs against a landmark&quot;&gt;&gt;
+    &lt;&lt;set $explorationMarker = &quot;twigs&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Stack three fallen twigs against a landmark&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The Marker&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="17" name="The Marker" tags="" position="850,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;marker-left&quot;&gt;
+&lt;h1&gt;Proof of This Morning&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $explorationMarker is &quot;stone&quot;&gt;&gt;
+You lift the chosen stone from its old place and set it where its absence and its new position will both be obvious tomorrow.
+&lt;&lt;elseif $explorationMarker is &quot;cross&quot;&gt;&gt;
+You scratch two clean lines into the damp earth. The small cross remains sharp-edged when you lift your paw.
+&lt;&lt;else&gt;&gt;
+You choose three fallen twigs of different lengths and lean them together against a landmark. They form a little structure no gust could create by accident.
+&lt;&lt;/if&gt;&gt;
+
+The change is simple enough to recognize and small enough that no wind or animal should undo it before morning.
+
+You repeat the location and the shape of your marker until you are certain you will remember both.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;p class=&quot;choice-label&quot;&gt;There is time for one more test.&lt;/p&gt;
+
+&lt;&lt;link &quot;Go farther and see how far the route continues&quot;&gt;&gt;
+    &lt;&lt;set $explorationFinalStep = &quot;farther&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Go farther and see how far the route continues&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The World&#39;s Shape&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Return to the marker and make sure it remains in place&quot;&gt;&gt;
+    &lt;&lt;set $explorationFinalStep = &quot;check&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Return to the marker and make sure it remains in place&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The World&#39;s Shape&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;
+
+&lt;&lt;link &quot;Find a high point and memorize the shape of the land&quot;&gt;&gt;
+    &lt;&lt;set $explorationFinalStep = &quot;high&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Find a high point and memorize the shape of the land&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;The World&#39;s Shape&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="18" name="The World&#39;s Shape" tags="" position="975,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;world-shape&quot;&gt;
+&lt;h1&gt;How Far the Day Goes&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+&lt;&lt;if $explorationFinalStep is &quot;farther&quot;&gt;&gt;
+You continue until the route narrows and the lowering light warns you to turn back. The forest does not end at the edge of the fable; it keeps opening into more paths than one day can hold.
+&lt;&lt;elseif $explorationFinalStep is &quot;check&quot;&gt;&gt;
+You retrace your steps. The marker remains exactly where you left it. Whatever restores the world has not acted yet—it waits for the day to end.
+&lt;&lt;else&gt;&gt;
+You climb until you can see the old tree, the silver line of the stream, and the dark rise beyond the clearing. You fix their positions in your memory like points on a map.
+&lt;&lt;/if&gt;&gt;
+
+The light is fading. You carry a larger map of the world back toward evening, together with one deliberate change that tomorrow can confirm or erase.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;&lt;link &quot;Watch what evening does to the world&quot;&gt;&gt;
+    &lt;&lt;run setup.setPendingStoryAction(&quot;Watch what evening does to the world&quot;)&gt;&gt;
+    &lt;&lt;goto &quot;Exploration Evening&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="19" name="Exploration Evening" tags="" position="1100,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;exploration-evening&quot;&gt;
+&lt;h1&gt;The Third Evening&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+The clearing begins to rewind for the third time. Shadows retreat. Bent grass rises beneath your footprints. The routes you walked disappear into darkness.
+
+Somewhere beyond the trees, the marker you left is returned to its original state.
+
+Tomorrow, you can retrace your route and see whether the world restored it exactly.
+
+The old story is still waiting, but it is no longer the only script you know.
+&lt;/div&gt;
+&lt;/section&gt;
+
+&lt;&lt;link &quot;Carry your map of the world into another morning&quot;&gt;&gt;
+    &lt;&lt;run setup.activateFreeStory(4)&gt;&gt;
+    &lt;&lt;goto &quot;Dynamic Morning&quot;&gt;&gt;
+&lt;&lt;/link&gt;&gt;</tw-passagedata><tw-passagedata pid="20" name="Dynamic Morning" tags="" position="1225,225" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;dynamic-morning&quot;&gt;
+&lt;h1&gt;A Morning Without a Fixed Script&lt;/h1&gt;
+
+&lt;div class=&quot;story-copy&quot;&gt;
+I wake beneath the same tree, with the same crow above me and morning arranged exactly where it was before. The familiar choices are still waiting, but they no longer feel inevitable.
+
+&lt;&lt;if $explorationRoute&gt;&gt;
+&lt;div class=&quot;memory&quot;&gt;I remember the route I chose beyond the clearing and the marker I left before the world rewound.&lt;/div&gt;
+&lt;&lt;/if&gt;&gt;
+
+I can retrace my steps, test another part of the world, return to the old script, speak, wait, or try something the written story never anticipated.
+&lt;/div&gt;
+&lt;/section&gt;</tw-passagedata><tw-passagedata pid="21" name="New Tomorrow" tags="" position="100,350" size="100,100">&lt;section class=&quot;story-scene&quot; data-log-scene=&quot;new-tomorrow&quot;&gt;
 &lt;h1&gt;The Morning After&lt;/h1&gt;
 
 &lt;div class=&quot;story-copy&quot;&gt;

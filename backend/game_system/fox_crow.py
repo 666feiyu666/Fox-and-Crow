@@ -213,7 +213,7 @@ def story_agent_view(state: GameState) -> dict[str, Any]:
 
 
 def public_event_view(resolution: FoxCrowResolution) -> list[dict[str, str]]:
-    """Expose confirmed public events as grounding sources, not final prose."""
+    """Expose confirmed public events from the historical Node 2 rules."""
     return [
         {
             "event": event.value,

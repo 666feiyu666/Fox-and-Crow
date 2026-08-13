@@ -23,7 +23,7 @@
 flowchart TD
     A["进入固定 Twine Passage"] --> B{"选择固定选项或自由输入"}
     B -->|"固定选项"| C["进入下一个固定 Passage"]
-    B -->|"自由输入"| D["POST /api/action"]
+    B -->|"自由输入（历史路径）"| D["Node 1 /api/action（已移除）"]
     D --> E["DeepSeek 返回 narration 与可选 learnedChoice"]
     E --> F["进入 A New Turn 生成 Passage"]
     F --> G["返回原场景"]
@@ -95,7 +95,7 @@ Agent 提案校验器已经限制模型只能提议命名 effect，例如移动�
 在项目根目录运行：
 
 ```powershell
-& 'D:\ProgramData\Anaconda3\python.exe' .\backend\server.py
+uv run python .\backend\server.py
 ```
 
 然后打开：
@@ -110,7 +110,7 @@ http://127.0.0.1:8000
 
 ```powershell
 & '.\.tools\tweego-2.1.1\tweego.exe' -f sugarcube-2 -o '.\dist\index.html' '.\src'
-& 'D:\ProgramData\Anaconda3\python.exe' -m unittest discover -s tests -v
+uv run python -m unittest discover -s tests -v
 ```
 
 截至 2026-08-10：
@@ -124,7 +124,7 @@ http://127.0.0.1:8000
 
 ## 9. 当前边界
 
-- 结构化游戏状态和 Agent effect 尚未接入 `/api/action` 与 Twine。
+- 本节记录的是 Node 1 历史路径；`/api/action` 已在 Node 2.5 中移除，当前 Twine 使用带 SAY / DO 类型的 `/api/turn`。
 - Remembered choice 保存于当前 SugarCube 游戏状态，刷新为新游戏后不保证保留。
 - Remembered choice 当前重放已知结果，不会依据新的结构化状态重新结算。
 - 固定故事路线仍是主要流程，自由行动不会创建持久的分支图。

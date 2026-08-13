@@ -1,60 +1,44 @@
-# Runtime architecture
+# Node 2.5 runtime architecture
 
-This document describes the current code boundaries after the responsibility-based
-refactor. The refactor preserves the existing player flow; it does not implement new
-Game Agent, Story Agent, or game-system behavior.
-
-## Core responsibilities
+Node 2.5 is the active, distributable Story-first prototype. It intentionally does
+not implement the three-layer Node 3 architecture.
 
 ```text
-Player input
-    -> Game Agent interprets the attempted action
-    -> Game system validates and applies authoritative rules
-    -> Story Agent narrates confirmed public events
-    -> Application layer commits the candidate state
+SAY or DO input
+    -> HTTP validation
+    -> Story Agent (one model call)
+    -> deterministic one-unit time advance
+    -> optimistic session commit
+    -> narration, time, and Story Log UI
 ```
 
-- The **game system** owns authoritative state, deterministic transitions, character
-  knowledge projections, public events, and ending rules.
-- The **Game Agent** interprets natural-language input. Its output is a proposal and
-  cannot directly mutate authoritative state.
-- The **Story Agent** turns player-visible context and confirmed events into prose. Its
-  narration does not become authoritative state by itself.
-- The **application layer** coordinates a transactional turn without owning prompts or
-  story-specific rules.
+## Active responsibilities
 
-## Package map
+- `backend/server.py` validates `say` / `do`, maps errors, and exposes session APIs.
+- `backend/application/turns.py` enforces the generate-then-commit transaction.
+- `backend/story_runtime/state.py` owns only loop number, elapsed/remaining time,
+  time phase, and the five most recent visible turns used as narrative context.
+- `backend/story_agent/` defines the single Story Agent port.
+- `backend/infrastructure/deepseek.py` implements that port with one model request.
+- `src/story.twee` owns the welcome flow, input mode, visible time, loading/error
+  feedback, Story Log, restart flow, and responsive presentation.
 
-| Package | Responsibility |
-|---|---|
-| `backend/game_system/` | Authoritative state and deterministic Fox-and-Crow rules |
-| `backend/game_agent/` | Game Agent port and the existing bounded-effect experiment |
-| `backend/story_agent/` | Story Agent and narrative-grounding ports |
-| `backend/application/` | Turn coordination and commit ordering |
-| `backend/infrastructure/` | DeepSeek and in-memory session-store adapters |
-| `backend/server.py` | HTTP validation, response mapping, and static-file serving |
+The Story Agent produces visible prose only. It does not decide victory, escape,
+inventory, relationships, trust, hunger, or other authoritative state. Every usable
+response costs exactly one of six time units. When the sixth unit is consumed, the
+runtime unconditionally starts the next loop. Model or network failure leaves the
+session unchanged.
 
-The historical development-node numbers are intentionally absent from runtime module
-names. `fox_crow.py` names the scenario whose current rules it contains; it is not
-presented as a general game engine.
+## Historical Node 2 code
 
-## Turn boundary
-
-`TurnCoordinator` depends on the Game Agent, Story Agent, narrative grounder, session
-store, and game-system functions through their responsibilities. The current local
-runtime supplies one `DeepSeekAgentGateway` instance for all model-backed ports, but
-the ports are separate so each capability can be developed and evaluated independently
-without changing the game rules or the coordinator.
-
-State is committed only after action interpretation, deterministic resolution,
-narration, and grounding have succeeded. When narration fails grounding twice, the
-existing confirmed-public-event fallback remains in place.
+`backend/game_system/`, `backend/game_agent/`, and their focused tests remain as
+historical comparison material tied to baseline commit `142fd35`. They are not
+imported by the Node 2.5 server path and must not be mistaken for active runtime
+state. Node 3 can replace this simplified runtime after its architecture is verified.
 
 ## Current limits
 
-- The current scenario still contains only the existing necklace path.
-- The generic effect proposal parser remains an isolated experiment and is not wired
-  into the playable turn.
-- Sessions remain process-local and disappear when the server restarts.
-- The DeepSeek adapter currently implements all Agent ports; separating models or
-  prompts further is future capability work, not part of this refactor.
+- Sessions are process-local and are lost when the server restarts.
+- The five-turn context is visible-story memory, not structured world state.
+- Free input cannot determine victory or escape from the loop in Node 2.5.
+- Deployment and hosted mobile verification are separate from local completion.

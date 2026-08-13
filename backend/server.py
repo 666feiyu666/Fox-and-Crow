@@ -14,25 +14,23 @@ if __package__ in {None, ""}:  # Support `python backend/server.py` from the pro
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.application.turns import TurnCoordinator
-from backend.game_system.fox_crow import FoxCrowRuleError, player_view
 from backend.infrastructure.deepseek import (
-    SCENE_CONTEXT,
     ConfigurationError,
     DeepSeekAgentGateway,
     DeepSeekError,
     load_env_local,
 )
 from backend.infrastructure.session_store import (
-    InMemoryGameSessionStore,
+    InMemoryStorySessionStore,
     SessionNotFoundError,
     StaleSessionError,
 )
+from backend.story_runtime.state import player_view
 
 
 MAX_ACTION_LENGTH = 500
 MAX_REQUEST_BYTES = 4096
 API_PATHS = {
-    "/api/action",
     "/api/session",
     "/api/session/reset",
     "/api/turn",
@@ -45,7 +43,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         *args: Any,
         directory: str,
         agent_gateway: DeepSeekAgentGateway,
-        session_store: InMemoryGameSessionStore,
+        session_store: InMemoryStorySessionStore,
         **kwargs: Any,
     ) -> None:
         self.agent_gateway = agent_gateway
@@ -81,9 +79,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         if not ok:
             return
 
-        if path == "/api/action":
-            self._handle_free_action(payload)
-        elif path == "/api/session":
+        if path == "/api/session":
             self._handle_session(payload)
         elif path == "/api/session/reset":
             self._handle_session_reset(payload)
@@ -113,58 +109,19 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return False, None
         return True, payload
 
-    def _handle_free_action(self, payload: Any) -> None:
-        error = self._validate_free_action_payload(payload)
-        if error is not None:
-            self._send_json(400, {"error": error})
-            return
-
-        passage = payload["passage"]
-        loop_count = payload["loopCount"]
-        action = payload["action"].strip()
-
-        try:
-            outcome = self.agent_gateway.generate_free_action(
-                passage,
-                loop_count,
-                action,
-            )
-        except ConfigurationError:
-            self._send_configuration_error()
-            return
-        except DeepSeekError as error:
-            self._send_deepseek_error(error)
-            return
-
-        self._send_json(
-            200,
-            {
-                "narration": outcome.narration,
-                "passage": passage,
-                "learnedChoice": (
-                    {
-                        "label": outcome.choice_label,
-                        "action": action,
-                    }
-                    if outcome.promoted
-                    else None
-                ),
-            },
-        )
-
     def _handle_session(self, payload: Any) -> None:
         if not isinstance(payload, dict) or not set(payload) <= {"loopCount"}:
             self._send_json(400, {"error": "Session JSON may contain only loopCount."})
             return
-        loop_count = payload.get("loopCount", 3)
+        loop_count = payload.get("loopCount", 1)
         if (
             isinstance(loop_count, bool)
             or not isinstance(loop_count, int)
-            or loop_count < 3
+            or loop_count < 1
         ):
             self._send_json(
                 400,
-                {"error": "Dynamic story sessions begin at loopCount 3 or later."},
+                {"error": "loopCount must be a positive integer."},
             )
             return
 
@@ -175,49 +132,50 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         )
 
     def _handle_turn(self, payload: Any) -> None:
-        if not isinstance(payload, dict) or set(payload) != {"sessionId", "action"}:
-            self._send_json(400, {"error": "Turn JSON must contain sessionId and action."})
+        if not isinstance(payload, dict) or set(payload) != {
+            "sessionId",
+            "inputType",
+            "content",
+        }:
+            self._send_json(
+                400,
+                {"error": "Turn JSON must contain sessionId, inputType, and content."},
+            )
             return
         session_id = payload["sessionId"]
-        action = payload["action"]
+        input_type = payload["inputType"]
+        content = payload["content"]
         if not isinstance(session_id, str) or not session_id.strip():
             self._send_json(400, {"error": "sessionId must be a non-empty string."})
             return
-        if not isinstance(action, str) or not action.strip():
-            self._send_json(400, {"error": "Enter an action before submitting."})
+        if not isinstance(input_type, str) or input_type not in {"say", "do"}:
+            self._send_json(400, {"error": "inputType must be either say or do."})
             return
-        if len(action) > MAX_ACTION_LENGTH:
+        if not isinstance(content, str) or not content.strip():
+            self._send_json(400, {"error": "Enter one line to say or one action to do."})
+            return
+        if len(content) > MAX_ACTION_LENGTH:
             self._send_json(
                 400,
-                {"error": f"Action must be {MAX_ACTION_LENGTH} characters or fewer."},
+                {"error": f"Input must be {MAX_ACTION_LENGTH} characters or fewer."},
             )
             return
 
         coordinator = TurnCoordinator(
-            game_agent=self.agent_gateway,
             story_agent=self.agent_gateway,
-            narrative_grounder=self.agent_gateway,
             session_store=self.session_store,
-            log_fallback=lambda message: self.log_message("%s", message),
         )
         try:
-            result = coordinator.resolve_turn(session_id, action.strip())
+            result = coordinator.resolve_turn(
+                session_id,
+                input_type,
+                content.strip(),
+            )
         except ConfigurationError:
             self._send_configuration_error()
             return
         except DeepSeekError as error:
             self._send_deepseek_error(error)
-            return
-        except FoxCrowRuleError:
-            self._send_json(
-                502,
-                {
-                    "error": (
-                        "The story could not understand that action. "
-                        "Try describing it another way."
-                    )
-                },
-            )
             return
         except SessionNotFoundError:
             self._send_json(
@@ -241,7 +199,11 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             200,
             {
                 "sessionId": result.session_id,
-                "narration": result.narration,
+                "storyEntry": {
+                    "inputType": result.input_type,
+                    "playerInput": result.player_input,
+                    "narration": result.narration,
+                },
                 "outcome": result.outcome,
                 "playerState": result.player_state,
             },
@@ -259,33 +221,12 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self.session_store.discard(session_id)
         self._send_json(200, {"status": "ok"})
 
-    @staticmethod
-    def _validate_free_action_payload(payload: Any) -> str | None:
-        if not isinstance(payload, dict):
-            return "Request JSON must be an object."
-
-        passage = payload.get("passage")
-        if passage not in SCENE_CONTEXT:
-            return "Unknown story passage."
-
-        loop_count = payload.get("loopCount")
-        if isinstance(loop_count, bool) or not isinstance(loop_count, int) or loop_count < 0:
-            return "loopCount must be a non-negative integer."
-
-        action = payload.get("action")
-        if not isinstance(action, str) or not action.strip():
-            return "Enter an action before submitting."
-        if len(action) > MAX_ACTION_LENGTH:
-            return f"Action must be {MAX_ACTION_LENGTH} characters or fewer."
-        return None
-
     def _send_configuration_error(self) -> None:
         self._send_json(
             503,
             {
                 "error": (
-                    "The story API is not configured. Set DEEPSEEK_API_KEY "
-                    "and restart the server."
+                    "The story service is not configured yet. Please try again later."
                 )
             },
         )
@@ -328,7 +269,7 @@ def create_server(
     port: int = 8000,
     dist_dir: Path | None = None,
     agent_gateway: DeepSeekAgentGateway | None = None,
-    session_store: InMemoryGameSessionStore | None = None,
+    session_store: InMemoryStorySessionStore | None = None,
 ) -> ThreadingHTTPServer:
     project_root = Path(__file__).resolve().parents[1]
     static_dir = (dist_dir or project_root / "dist").resolve()
@@ -336,7 +277,7 @@ def create_server(
         raise FileNotFoundError(f"Built story not found: {static_dir / 'index.html'}")
 
     gateway = agent_gateway or DeepSeekAgentGateway()
-    sessions = session_store or InMemoryGameSessionStore()
+    sessions = session_store or InMemoryStorySessionStore()
     handler = partial(
         StoryRequestHandler,
         directory=str(static_dir),

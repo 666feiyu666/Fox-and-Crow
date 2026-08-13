@@ -6,27 +6,40 @@ The Fox and the Crow: A Day in Loop
     "ifid": "7A4F23F7-9B8B-4E75-9E84-3A626B435833",
     "format": "SugarCube",
     "format-version": "2.30.0",
-    "start": "Morning",
+    "start": "Welcome",
     "zoom": 1
 }
 
 :: StoryInit
-<<set $loopCount = 0>>
+<<set $loopCount = 1>>
 <<set $learnedActions = {}>>
 <<set $generatedTurn = null>>
 <<set $gameSessionId = null>>
 <<set $currentTurn = null>>
-<<set $foxMemories = []>>
 <<set $storyLog = []>>
 <<set $pendingStoryAction = null>>
+<<set $storyFirstActive = false>>
+<<set $storyInputType = "say">>
+<<set $elapsedUnits = 0>>
+<<set $remainingUnits = 6>>
+<<set $totalUnits = 6>>
+<<set $timePhase = "morning">>
+<<set $explorationRoute = null>>
+<<set $explorationMarker = null>>
+<<set $explorationFinalStep = null>>
 
 :: PassageHeader [nobr]
 <header class="story-header">
-    <p class="eyebrow">THE FOX AND THE CROW</p>
+    <div>
+        <p class="eyebrow">THE FOX AND THE CROW</p>
+        <p class="version-badge">STORY-FIRST · NODE 2.5</p>
+    </div>
     <div class="story-header-actions">
-        <<if State.passage is "New Tomorrow">>
+        <<if State.passage is "Welcome">>
+            <p class="loop-counter">NODE 2.5 PREVIEW</p>
+        <<elseif not $storyFirstActive and State.passage is "New Tomorrow">>
             <p class="loop-counter">NEW TOMORROW</p>
-        <<else>>
+        <<elseif not $storyFirstActive>>
             <p class="loop-counter">DAY <<print $loopCount + 1>></p>
         <</if>>
         <button class="story-log-open" type="button">Story Log</button>
@@ -62,21 +75,28 @@ The Fox and the Crow: A Day in Loop
 </dialog>
 
 :: StoryStylesheet [stylesheet]
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Serif:wght@400;600&family=Source+Sans+3:wght@500;600;700&display=swap");
 
 :root {
-    color-scheme: dark;
-    --ink: #f8f0dc;
-    --muted: #c6b99f;
-    --accent: #f1b24a;
-    --accent-strong: #ffd07d;
-    --panel: rgba(28, 25, 21, 0.88);
-    --line: rgba(241, 178, 74, 0.28);
+    color-scheme: light;
+    --paper: #f1ecda;
+    --paper-clear: #fbf8ec;
+    --paper-deep: #ded6bd;
+    --ink: #38372f;
+    --muted: #6e6a5e;
+    --accent: #69765b;
+    --accent-strong: #46513e;
+    --accent-soft: rgba(105, 118, 91, 0.12);
+    --panel: rgba(250, 247, 233, 0.92);
+    --line: rgba(61, 60, 51, 0.24);
+    --line-soft: rgba(61, 60, 51, 0.12);
+    --danger: #854f40;
+    --ui-font: "Source Sans 3", "Segoe UI", sans-serif;
 }
 
 html {
     min-height: 100%;
-    background: #151915;
+    background: var(--paper-deep);
 }
 
 body {
@@ -84,8 +104,9 @@ body {
     margin: 0;
     color: var(--ink);
     background:
-        radial-gradient(circle at 50% 8%, rgba(214, 145, 48, 0.18), transparent 34rem),
-        linear-gradient(180deg, #273128 0%, #151915 62%, #101210 100%);
+        radial-gradient(circle at 50% 2%, rgba(255, 253, 243, 0.92), transparent 36rem),
+        radial-gradient(circle at 12% 58%, rgba(117, 128, 99, 0.07), transparent 28rem),
+        linear-gradient(180deg, #eee8d4 0%, #e4ddc7 100%);
     font-family: "Noto Serif", Georgia, serif;
 }
 
@@ -94,11 +115,12 @@ body::before {
     inset: 0;
     z-index: -1;
     content: "";
-    opacity: 0.26;
+    opacity: 0.5;
     background-image:
-        linear-gradient(115deg, transparent 49%, rgba(255, 255, 255, 0.035) 50%, transparent 51%),
-        linear-gradient(25deg, transparent 49%, rgba(255, 255, 255, 0.025) 50%, transparent 51%);
-    background-size: 46px 46px, 62px 62px;
+        repeating-linear-gradient(8deg, transparent 0 17px, rgba(65, 63, 54, 0.018) 18px, transparent 19px),
+        repeating-linear-gradient(97deg, transparent 0 23px, rgba(65, 63, 54, 0.014) 24px, transparent 25px);
+    background-size: 92px 92px, 118px 118px;
+    pointer-events: none;
 }
 
 #ui-bar {
@@ -110,9 +132,9 @@ body::before {
 }
 
 #passages {
-    width: min(42rem, calc(100% - 2.5rem));
+    width: min(46rem, calc(100% - 2.5rem));
     margin: 0 auto;
-    padding: 9vh 0 12vh;
+    padding: 7vh 0 12vh;
 }
 
 .story-header {
@@ -120,8 +142,8 @@ body::before {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1.5rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px solid var(--line);
+    padding: 0 0.25rem 0.9rem;
+    border-bottom: 1px solid rgba(56, 55, 47, 0.36);
 }
 
 .story-header p {
@@ -135,15 +157,22 @@ body::before {
 }
 
 .eyebrow {
-    color: var(--accent);
+    color: var(--ink);
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.24em;
 }
 
+.version-badge {
+    margin-top: 0.3rem !important;
+    color: var(--muted);
+    font: 700 0.64rem/1.2 var(--ui-font);
+    letter-spacing: 0.12em;
+}
+
 .loop-counter {
     color: var(--muted);
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.76rem;
     letter-spacing: 0.08em;
 }
@@ -154,11 +183,11 @@ body::before {
 .story-restart-open,
 .story-restart-cancel,
 .story-restart-confirm {
-    border: 1px solid rgba(241, 178, 74, 0.48);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.5);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.07);
-    font: 600 0.78rem/1.2 system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.54);
+    font: 600 0.78rem/1.2 var(--ui-font);
     letter-spacing: 0.04em;
     cursor: pointer;
 }
@@ -178,7 +207,7 @@ body::before {
 .story-restart-cancel:hover,
 .story-restart-cancel:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
 }
 
@@ -189,15 +218,15 @@ body::before {
     max-height: min(90vh, 54rem);
     padding: 0;
     overflow: hidden;
-    border: 1px solid rgba(241, 178, 74, 0.36);
-    border-radius: 3px;
+    border: 1px solid rgba(56, 55, 47, 0.36);
+    border-radius: 1px;
     color: var(--ink);
-    background: #171914;
-    box-shadow: 0 2rem 7rem rgba(0, 0, 0, 0.72);
+    background: var(--paper-clear);
+    box-shadow: 0 2rem 7rem rgba(63, 57, 43, 0.28);
 }
 
 .story-log-dialog::backdrop {
-    background: rgba(5, 8, 6, 0.82);
+    background: rgba(66, 62, 52, 0.38);
     backdrop-filter: blur(3px);
 }
 
@@ -218,14 +247,15 @@ body::before {
 
 .story-log-header h2 {
     margin: 0.2rem 0 0;
-    color: var(--accent-strong);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
     font-size: clamp(1.55rem, 4vw, 2.2rem);
 }
 
 .story-log-eyebrow {
     margin: 0;
     color: var(--muted);
-    font: 700 0.7rem/1.2 system-ui, sans-serif;
+    font: 700 0.7rem/1.2 var(--ui-font);
     letter-spacing: 0.18em;
 }
 
@@ -241,7 +271,7 @@ body::before {
     gap: 0.55rem;
     padding: 1rem clamp(1rem, 4vw, 2rem);
     overflow-x: auto;
-    border-bottom: 1px solid rgba(241, 178, 74, 0.16);
+    border-bottom: 1px solid var(--line-soft);
 }
 
 .story-log-day {
@@ -258,15 +288,16 @@ body::before {
 
 .story-log-day-title {
     margin: 0 0 1.25rem;
-    color: var(--accent-strong);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
     font-size: 1.35rem;
 }
 
 .story-log-entry {
     margin: 0 0 1rem;
     padding: 1rem 1.1rem;
-    border-left: 2px solid rgba(241, 178, 74, 0.52);
-    background: rgba(241, 178, 74, 0.045);
+    border-left: 2px solid rgba(70, 81, 62, 0.48);
+    background: rgba(105, 118, 91, 0.055);
 }
 
 .story-log-entry h4 {
@@ -278,7 +309,7 @@ body::before {
 .story-log-label {
     margin: 0 0 0.45rem;
     color: var(--muted);
-    font: 700 0.7rem/1.2 system-ui, sans-serif;
+    font: 700 0.7rem/1.2 var(--ui-font);
     letter-spacing: 0.15em;
 }
 
@@ -287,12 +318,13 @@ body::before {
 .story-log-empty {
     margin: 0;
     white-space: pre-line;
-    font: 0.92rem/1.65 system-ui, sans-serif;
+    font: 0.92rem/1.65 var(--ui-font);
 }
 
 .story-log-action {
     margin-bottom: 1rem;
     color: var(--accent-strong);
+    font-weight: 600;
 }
 
 .story-log-narration,
@@ -308,7 +340,7 @@ body::before {
     gap: 1rem;
     padding: 1rem clamp(1rem, 4vw, 2rem);
     border-top: 1px solid var(--line);
-    background: rgba(0, 0, 0, 0.16);
+    background: rgba(105, 118, 91, 0.055);
 }
 
 .story-log-footer h3,
@@ -324,23 +356,23 @@ body::before {
 .story-log-footer p {
     margin-top: 0.25rem;
     color: var(--muted);
-    font: 0.8rem/1.45 system-ui, sans-serif;
+    font: 0.8rem/1.45 var(--ui-font);
 }
 
 .story-restart-open,
 .story-restart-confirm {
-    border-color: rgba(217, 116, 86, 0.72);
-    color: #ffd0c1;
-    background: rgba(170, 62, 36, 0.14);
+    border-color: rgba(133, 79, 64, 0.58);
+    color: var(--danger);
+    background: rgba(133, 79, 64, 0.06);
 }
 
 .story-restart-open:hover,
 .story-restart-open:focus-visible,
 .story-restart-confirm:hover,
 .story-restart-confirm:focus-visible {
-    border-color: #ffd0c1;
-    color: #21100b;
-    background: #ffd0c1;
+    border-color: var(--danger);
+    color: var(--paper-clear);
+    background: var(--danger);
 }
 
 .story-restart-confirmation {
@@ -351,7 +383,7 @@ body::before {
     justify-content: space-between;
     gap: 1rem;
     padding: 0.85rem clamp(1rem, 4vw, 2rem);
-    background: #211c17;
+    background: #eee6d2;
 }
 
 .story-restart-confirmation[hidden] {
@@ -365,20 +397,33 @@ body::before {
 }
 
 .passage {
+    position: relative;
     min-height: 22rem;
     padding: clamp(1.5rem, 5vw, 3.5rem);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
+    border: 1px solid rgba(56, 55, 47, 0.26);
+    border-radius: 1px;
     background: var(--panel);
-    box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.3);
+    box-shadow:
+        inset 0 0 0 4px rgba(255, 253, 244, 0.38),
+        0 1.5rem 4.5rem rgba(68, 61, 46, 0.14);
+}
+
+.passage::before {
+    position: absolute;
+    inset: 0.55rem;
+    border: 1px solid rgba(56, 55, 47, 0.08);
+    content: "";
+    pointer-events: none;
 }
 
 .passage h1 {
     margin: 0 0 1.7rem;
-    color: var(--accent-strong);
-    font-size: clamp(1.75rem, 5vw, 2.6rem);
+    color: var(--ink);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(2.1rem, 6vw, 3.1rem);
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
+    line-height: 1.02;
 }
 
 .passage p {
@@ -393,7 +438,7 @@ body::before {
     padding: 0.8rem 1rem;
     border-left: 2px solid var(--accent);
     color: var(--muted);
-    background: rgba(241, 178, 74, 0.07);
+    background: var(--accent-soft);
     font-size: 0.92rem;
     line-height: 1.7;
 }
@@ -401,7 +446,7 @@ body::before {
 .choice-label {
     margin-top: 2.5rem !important;
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.75rem !important;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -412,11 +457,11 @@ body::before {
     display: block;
     margin-top: 0.7rem;
     padding: 1rem 1.15rem;
-    border: 1px solid rgba(241, 178, 74, 0.52);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.5);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font-family: system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.5);
+    font-family: var(--ui-font);
     font-size: 0.98rem;
     text-decoration: none;
     transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
@@ -425,9 +470,19 @@ body::before {
 .passage a.link-internal:hover,
 .passage a.link-internal:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
     transform: translateY(-1px);
+}
+
+.welcome-actions a:first-of-type {
+    color: var(--paper-clear);
+    background: var(--accent-strong);
+}
+
+.welcome-actions a:first-of-type:hover,
+.welcome-actions a:first-of-type:focus-visible {
+    background: #35402f;
 }
 
 .ai-action-panel {
@@ -436,18 +491,79 @@ body::before {
     border-top: 1px solid var(--line);
 }
 
+.input-mode-fieldset {
+    margin: 1.15rem 0 0.85rem;
+    padding: 0;
+    border: 0;
+}
+
+.input-mode-fieldset legend {
+    margin-bottom: 0.55rem;
+    color: var(--muted);
+    font: 700 0.72rem/1.2 var(--ui-font);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.input-mode-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.input-mode-option {
+    position: relative;
+    display: block;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(56, 55, 47, 0.28);
+    color: var(--muted);
+    background: rgba(255, 253, 244, 0.44);
+    font: 600 0.9rem/1.35 var(--ui-font);
+    cursor: pointer;
+}
+
+.input-mode-option:has(input:checked) {
+    border-color: var(--accent-strong);
+    color: var(--ink);
+    background: var(--accent-soft);
+    box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.input-mode-option input {
+    position: absolute;
+    opacity: 0;
+}
+
+.input-mode-option small {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 400;
+    opacity: 0.82;
+}
+
+.welcome-actions {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.welcome-note {
+    color: var(--muted) !important;
+    font: 0.84rem/1.6 var(--ui-font) !important;
+}
+
 .learned-actions-panel {
     margin-top: 2rem;
     padding: 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.28);
-    background: rgba(241, 178, 74, 0.04);
+    border: 1px solid var(--line);
+    background: rgba(255, 253, 244, 0.34);
 }
 
 .learned-actions-panel h2 {
     margin: 0 0 0.45rem;
-    color: var(--accent-strong);
-    font-size: 1.05rem;
-    font-weight: 600;
+    color: var(--ink);
+    font: 600 1.2rem/1.2 "Cormorant Garamond", Georgia, serif;
 }
 
 .learned-actions-list {
@@ -458,65 +574,84 @@ body::before {
 
 .learned-action-choice {
     padding: 0.8rem 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.52);
-    border-radius: 2px;
+    border: 1px solid rgba(70, 81, 62, 0.45);
+    border-radius: 1px;
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font: 0.98rem/1.4 system-ui, sans-serif;
+    background: rgba(251, 248, 236, 0.58);
+    font: 600 0.94rem/1.4 var(--ui-font);
     text-align: left;
     cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .learned-action-choice:hover,
 .learned-action-choice:focus-visible {
     border-color: var(--accent-strong);
-    color: #17130d;
+    color: var(--paper-clear);
     background: var(--accent-strong);
 }
 
 .ai-action-panel h2 {
     margin: 0 0 0.65rem;
-    color: var(--accent-strong);
-    font-size: 1.15rem;
-    font-weight: 600;
+    color: var(--ink);
+    font: 600 1.35rem/1.2 "Cormorant Garamond", Georgia, serif;
 }
 
 .ai-action-help,
 .ai-action-status {
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.88rem !important;
     line-height: 1.55 !important;
 }
 
 .ai-action-input {
+    color-scheme: only light;
     box-sizing: border-box;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 6.5rem;
     margin-top: 0.35rem;
     padding: 0.9rem 1rem;
     resize: vertical;
-    border: 1px solid rgba(241, 178, 74, 0.4);
-    border-radius: 2px;
+    border: 1px solid rgba(56, 55, 47, 0.38);
+    border-radius: 1px;
     color: var(--ink);
-    background: rgba(8, 10, 8, 0.55);
-    font: 0.98rem/1.55 system-ui, sans-serif;
+    background: var(--paper-clear);
+    box-shadow: inset 0 1px 5px rgba(61, 60, 51, 0.06);
+    caret-color: var(--accent-strong);
+    -webkit-text-fill-color: var(--ink);
+    font: 0.98rem/1.55 var(--ui-font);
+}
+
+.ai-action-input::placeholder {
+    color: rgba(86, 82, 71, 0.65);
+    -webkit-text-fill-color: rgba(86, 82, 71, 0.65);
+    opacity: 1;
 }
 
 .ai-action-input:focus {
-    outline: 2px solid rgba(255, 208, 125, 0.35);
+    outline: 2px solid rgba(105, 118, 91, 0.2);
     border-color: var(--accent-strong);
 }
 
 .ai-action-submit {
     margin-top: 0.75rem;
     padding: 0.8rem 1rem;
-    border: 1px solid var(--accent);
-    border-radius: 2px;
-    color: #17130d;
-    background: var(--accent);
-    font: 600 0.92rem system-ui, sans-serif;
+    border: 1px solid var(--accent-strong);
+    border-radius: 1px;
+    color: var(--paper-clear);
+    background: var(--accent-strong);
+    font: 600 0.92rem var(--ui-font);
     cursor: pointer;
+    transition: background 150ms ease, transform 150ms ease;
+}
+
+.ai-action-submit:hover,
+.ai-action-submit:focus-visible {
+    background: #35402f;
+    transform: translateY(-1px);
 }
 
 .ai-action-submit:disabled {
@@ -529,7 +664,7 @@ body::before {
     padding: 1rem;
     border-left: 2px solid var(--accent);
     color: var(--ink);
-    background: rgba(241, 178, 74, 0.07);
+    background: var(--accent-soft);
     font-size: 1rem;
     line-height: 1.75;
 }
@@ -539,7 +674,7 @@ body::before {
     margin: 0 0 1.5rem;
     padding: 1rem;
     border-left: 2px solid var(--accent);
-    background: rgba(241, 178, 74, 0.07);
+    background: rgba(105, 118, 91, 0.08);
     font-size: 1rem;
     line-height: 1.75;
 }
@@ -547,36 +682,14 @@ body::before {
 .generated-action-player {
     border-left-color: var(--muted);
     color: var(--muted);
-    font-family: system-ui, sans-serif;
+    background: rgba(222, 214, 189, 0.36);
+    font-family: var(--ui-font);
 }
 
 .generated-action-memory {
     color: var(--muted) !important;
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui-font);
     font-size: 0.88rem !important;
-}
-
-.fox-memory-panel {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    border: 1px solid rgba(241, 178, 74, 0.28);
-    background: rgba(241, 178, 74, 0.04);
-}
-
-.fox-memory-panel h2 {
-    margin: 0 0 0.55rem;
-    color: var(--accent-strong);
-    font-size: 1rem;
-}
-
-.fox-memory-list {
-    margin: 0;
-    color: var(--muted);
-    font: 0.88rem/1.65 system-ui, sans-serif;
-}
-
-.fox-memory-list {
-    padding-left: 1.25rem;
 }
 
 .outcome-banner {
@@ -584,8 +697,8 @@ body::before {
     padding: 0.85rem 1rem;
     border-left: 2px solid var(--accent);
     color: var(--accent-strong);
-    background: rgba(241, 178, 74, 0.08);
-    font: 600 0.92rem/1.55 system-ui, sans-serif;
+    background: var(--accent-soft);
+    font: 600 0.92rem/1.55 var(--ui-font);
 }
 
 @media (max-width: 520px) {
@@ -632,12 +745,14 @@ body::before {
     .story-restart-actions button {
         flex: 1 1 50%;
     }
+
 }
 
 :: StoryScript [script]
-// The itch.io build calls the Render API. Local development can temporarily
-// set this to an empty string when using the same-origin server.
-var storyApiBaseUrl = "https://fox-and-crow-story-api.onrender.com";
+// Local builds use the same-origin server; itch.io calls the hosted Render API.
+var storyApiBaseUrl = ["127.0.0.1", "localhost"].includes(window.location.hostname)
+    ? ""
+    : "https://fox-and-crow-story-api.onrender.com";
 var activeStoryRequestController = null;
 var storyRunGeneration = 0;
 var selectedStoryLogDay = null;
@@ -682,7 +797,11 @@ async function postStoryJson(path, payload, signal) {
 
 function syncPlayerState(playerState) {
     State.variables.loopCount = playerState.loopCount;
-    State.variables.foxMemories = playerState.memories || [];
+    State.variables.elapsedUnits = playerState.elapsedUnits;
+    State.variables.remainingUnits = playerState.remainingUnits;
+    State.variables.totalUnits = playerState.totalUnits;
+    State.variables.timePhase = playerState.timePhase;
+    State.variables.storyFirstActive = true;
 }
 
 async function ensureGameSession(signal) {
@@ -690,7 +809,7 @@ async function ensureGameSession(signal) {
         return State.variables.gameSessionId;
     }
     var created = await postStoryJson("/api/session", {
-        loopCount: Math.max(3, State.variables.loopCount || 3)
+        loopCount: Math.max(1, State.variables.loopCount || 1)
     }, signal);
     State.variables.gameSessionId = created.sessionId;
     syncPlayerState(created.playerState);
@@ -701,15 +820,19 @@ async function submitPlayerAction(form) {
     var input = form.querySelector(".ai-action-input");
     var button = form.querySelector(".ai-action-submit");
     var status = form.querySelector(".ai-action-status");
+    var selectedType = form.querySelector('input[name="story-input-type"]:checked');
+    var inputType = selectedType ? selectedType.value : State.variables.storyInputType;
     var action = input.value.trim();
 
     if (!action) {
-        status.textContent = "Enter an action first.";
+        status.textContent = inputType === "say"
+            ? "Enter one line for the fox to say."
+            : "Enter one main action for the fox to try.";
         return;
     }
 
     button.disabled = true;
-    status.textContent = "The world listens, then answers...";
+    status.textContent = "The story is waking and listening. The first response may take a moment...";
     var actionDay = currentStoryDay();
     var requestGeneration = storyRunGeneration;
     var requestController = new AbortController();
@@ -719,22 +842,26 @@ async function submitPlayerAction(form) {
         var sessionId = await ensureGameSession(requestController.signal);
         var body = await postStoryJson("/api/turn", {
             sessionId: sessionId,
-            action: action
+            inputType: inputType,
+            content: action
         }, requestController.signal);
         if (requestGeneration !== storyRunGeneration) {
             return;
         }
         recordStoryEntry(actionDay, {
             title: "What Follows",
-            action: action,
-            story: body.narration
+            inputType: body.storyEntry.inputType,
+            action: body.storyEntry.playerInput,
+            story: body.storyEntry.narration
         });
         syncPlayerState(body.playerState);
         State.variables.currentTurn = {
-            action: action,
-            narration: body.narration,
+            inputType: body.storyEntry.inputType,
+            action: body.storyEntry.playerInput,
+            narration: body.storyEntry.narration,
             outcome: body.outcome
         };
+        State.variables.storyInputType = inputType;
         input.value = "";
         Engine.play("Dynamic Result");
     }
@@ -753,8 +880,43 @@ async function submitPlayerAction(form) {
 }
 
 function currentStoryDay() {
+    if (State.variables.storyFirstActive) {
+        return Math.max(1, Number(State.variables.loopCount || 1));
+    }
     return Math.max(1, Number(State.variables.loopCount || 0) + 1);
 }
+
+function startStoryFirst() {
+    State.variables.storyLog = [];
+    activateFreeStory(1);
+}
+
+function activateFreeStory(loopCount) {
+    State.variables.storyFirstActive = true;
+    State.variables.loopCount = loopCount;
+    State.variables.elapsedUnits = 0;
+    State.variables.remainingUnits = 6;
+    State.variables.totalUnits = 6;
+    State.variables.timePhase = "morning";
+    State.variables.storyInputType = "say";
+    State.variables.gameSessionId = null;
+    State.variables.currentTurn = null;
+}
+
+function startFullPrologue() {
+    State.variables.storyFirstActive = false;
+    State.variables.loopCount = 0;
+    State.variables.gameSessionId = null;
+    State.variables.currentTurn = null;
+    State.variables.storyLog = [];
+    State.variables.explorationRoute = null;
+    State.variables.explorationMarker = null;
+    State.variables.explorationFinalStep = null;
+}
+
+setup.startStoryFirst = startStoryFirst;
+setup.startFullPrologue = startFullPrologue;
+setup.activateFreeStory = activateFreeStory;
 
 function setPendingStoryAction(action) {
     State.variables.pendingStoryAction = {
@@ -794,6 +956,7 @@ function recordStoryEntry(day, entry) {
     dayRecord.entries.push({
         key: entry.key || null,
         title: entry.title || "What happened",
+        inputType: entry.inputType || null,
         action: entry.action || null,
         story: entry.story
     });
@@ -864,7 +1027,7 @@ function renderStoryLog(day) {
         button.className = "story-log-day";
         button.dataset.day = String(dayRecord.day);
         button.setAttribute("aria-pressed", dayRecord.day === selectedStoryLogDay ? "true" : "false");
-        button.textContent = "Day " + dayRecord.day;
+        button.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + dayRecord.day;
         days.appendChild(button);
     });
 
@@ -873,14 +1036,19 @@ function renderStoryLog(day) {
     });
     var title = document.createElement("h3");
     title.className = "story-log-day-title";
-    title.textContent = "Day " + selected.day;
+    title.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + selected.day;
     content.appendChild(title);
 
     selected.entries.forEach(function (entry) {
         var article = document.createElement("article");
         article.className = "story-log-entry";
         if (entry.action) {
-            appendStoryLogText(article, "YOUR ACTION", entry.action, "story-log-action");
+            appendStoryLogText(
+                article,
+                entry.inputType === "say" ? "YOU SAID" : "YOU DID",
+                entry.action,
+                "story-log-action"
+            );
             appendStoryLogText(article, "WHAT FOLLOWED", entry.story, "story-log-narration", entry.title);
         }
         else {
@@ -965,26 +1133,6 @@ async function restartStory() {
     Engine.restart();
 }
 
-function renderFoxMemories() {
-    var list = document.querySelector(".fox-memory-list");
-    if (!list) {
-        return;
-    }
-    var memories = State.variables.foxMemories || [];
-    list.replaceChildren();
-    if (memories.length === 0) {
-        var empty = document.createElement("li");
-        empty.textContent = "Only the certainty that this day has happened before.";
-        list.appendChild(empty);
-        return;
-    }
-    memories.forEach(function (memory) {
-        var item = document.createElement("li");
-        item.textContent = memory;
-        list.appendChild(item);
-    });
-}
-
 function renderDynamicResult() {
     if (State.passage !== "Dynamic Result") {
         return;
@@ -995,21 +1143,35 @@ function renderDynamicResult() {
     }
     document.querySelector(".generated-action-player").textContent = turn.action;
     document.querySelector(".generated-action-narration").textContent = turn.narration;
+    document.querySelector(".generated-action-label").textContent =
+        turn.inputType === "say" ? "You said" : "You did";
     var banner = document.querySelector(".outcome-banner");
-    if (turn.outcome === "loop_escaped") {
-        banner.textContent = "The evening arrives—and for the first time, it does not rewind.";
+    var loopAdvanced = turn.outcome === "loop_advanced";
+    banner.hidden = !loopAdvanced;
+    banner.textContent = loopAdvanced
+        ? "Time runs out. The clearing folds back into morning, and the next loop begins."
+        : "";
+}
+
+function updateStoryInputMode(form) {
+    var selected = form.querySelector('input[name="story-input-type"]:checked');
+    var input = form.querySelector(".ai-action-input");
+    if (!selected || !input) {
+        return;
     }
-    else if (turn.outcome === "loop_reset" || turn.outcome === "fox_starved") {
-        banner.textContent = "You wake beneath the same tree, carrying only what you remember.";
-    }
-    else {
-        banner.textContent = "The afternoon light shifts through the leaves. There is still time to act.";
-    }
+    State.variables.storyInputType = selected.value;
+    input.placeholder = selected.value === "say"
+        ? "For example: Have we met before?"
+        : "For example: I leave the clearing and follow the stream.";
 }
 
 $(document).on("submit", ".ai-action-form", function (event) {
     event.preventDefault();
     submitPlayerAction(this);
+});
+
+$(document).on("change", 'input[name="story-input-type"]', function () {
+    updateStoryInputMode(this.form);
 });
 
 $(document).on("click", ".story-log-open", function () {
@@ -1039,136 +1201,253 @@ $(document).on("click", ".story-restart-confirm", function () {
 
 $(document).on(":passagedisplay", function () {
     captureCurrentStoryScene();
-    renderFoxMemories();
     renderDynamicResult();
+    document.querySelectorAll(".ai-action-form").forEach(function (form) {
+        var preferred = form.querySelector(
+            'input[name="story-input-type"][value="' + State.variables.storyInputType + '"]'
+        );
+        if (preferred) {
+            preferred.checked = true;
+        }
+        updateStoryInputMode(form);
+    });
 });
 
 :: PassageFooter
-<<if State.passage is "Dynamic Morning">>
+<<if State.passage is "Dynamic Morning" or State.passage is "Dynamic Result">>
 <section class="ai-action-panel">
-    <h2>What do you do?</h2>
-    <p class="ai-action-help">Describe what the fox says or does. The story will continue from your action.</p>
+    <h2>What do you say or do?</h2>
+    <p class="ai-action-help">Choose one input type, then enter one spoken line or one main action.</p>
     <form class="ai-action-form">
-        <textarea class="ai-action-input" maxlength="500" required placeholder="For example: I ask the crow why she seems troubled."></textarea>
-        <button class="ai-action-submit" type="submit">Act</button>
+        <fieldset class="input-mode-fieldset">
+            <legend>Input type</legend>
+            <div class="input-mode-options">
+                <label class="input-mode-option">
+                    <input type="radio" name="story-input-type" value="say" checked>
+                    SAY · Speak
+                    <small>The fox says these exact words.</small>
+                </label>
+                <label class="input-mode-option">
+                    <input type="radio" name="story-input-type" value="do">
+                    DO · Act
+                    <small>The fox attempts one main action.</small>
+                </label>
+            </div>
+        </fieldset>
+        <textarea class="ai-action-input" maxlength="500" required placeholder="For example: Have we met before?"></textarea>
+        <button class="ai-action-submit" type="submit">Continue the story</button>
         <p class="ai-action-status" role="status" aria-live="polite"></p>
+        <p class="ai-action-help">The hosted story may take up to a minute to wake on the first request. If a request fails, your input stays here so you can retry.</p>
     </form>
 </section>
 <</if>>
 
+:: Welcome
+<h1>Enter the Story</h1>
+
+<p>You are the fox in a fable that refuses to end. The crow waits above the clearing, the same day keeps returning, and this time the next line belongs to you.</p>
+
+<p>Choose whether the fox <strong>says</strong> something or <strong>does</strong> one action. The Story Agent will continue what can be seen and heard; only time moves by rule.</p>
+
+<div class="welcome-actions">
+<<link "Start the Story-first experience">>
+    <<run setup.startStoryFirst()>>
+    <<goto "Dynamic Morning">>
+<</link>>
+
+<<link "Play the complete fable prologue first">>
+    <<run setup.startFullPrologue()>>
+    <<goto "Morning">>
+<</link>>
+</div>
+
+<p class="welcome-note">Node 2.5 preview · No local setup or personal API key is required on the hosted build.</p>
+
 :: Dynamic Result [generated]
 <h1>What Follows</h1>
 
-<p class="choice-label">You chose</p>
+<p class="choice-label generated-action-label">You chose</p>
 <div class="generated-action-player"></div>
 
 <p class="choice-label">What happened</p>
 <div class="generated-action-narration"></div>
 <div class="outcome-banner" aria-live="polite"></div>
 
-<<if $currentTurn and $currentTurn.outcome is "loop_escaped">>
-    [[Step into the new tomorrow->New Tomorrow]]
-<<else>>
-    [[Continue->Dynamic Morning]]
-<</if>>
-
 :: Morning
 <section class="story-scene" data-log-scene="morning">
 <<if $loopCount is 0>>
     <h1>The First Morning</h1>
     <div class="story-copy">
-        You wake at the edge of a forest clearing. Your stomach is hollow—you have not found a bite to eat in three days.
+        You wake at the edge of a forest clearing.
+
         Morning light filters through the leaves. High on a branch sits a crow with a piece of cheese in her beak.
     </div>
 <<elseif $loopCount is 1>>
     <h1>The Morning Again</h1>
     <div class="story-copy">
-        You wake with the taste of cheese already fading from your mouth. The light, the wind, and the exact angle of the crow's head are all as they were.
-        <div class="memory">You remember stealing the cheese. You also remember that it changed nothing.</div>
+        You wake with the taste of cheese still lingering in your mouth.
+
+        For a moment, you expect to see an empty branch. Instead, the crow is perched above the clearing with a piece of cheese in her beak—just as she was yesterday.
+
+        <div class="memory">Another piece? So soon?</div>
+
+        You stare up at her. She gives no sign that she recognizes the fox who tricked her only yesterday. Has she truly forgotten?
     </div>
 <<else>>
     <h1>The Third Morning</h1>
     <div class="story-copy">
-        Before you open your eyes, you know where every shadow will fall. The crow is above you again, holding the same cheese.
-        <div class="memory">This time you notice something you ignored before: the crow is not merely guarding her food. She keeps glancing anxiously toward the bushes.</div>
+        Before you open your eyes, you know where the light will fall, how the leaves will stir, and which branch will creak above you.
+
+        The crow is there. The cheese is there. Neither surprises you now.
+
+        For two mornings, that branch has been the whole world: the hunger below, the food above, and the trick between them. But the clearing continues beyond the tree.
+
+        <div class="memory">If the day can restore the cheese, what else does it restore?</div>
     </div>
 <</if>>
 </section>
 
 <p class="choice-label">What will you do?</p>
 
-<<link "Watch the crow in the tree">>
-    <<run setup.setPendingStoryAction("Watch the crow in the tree")>>
-    <<goto "Under the Tree">>
-<</link>>
+<<if $loopCount is 0>>
+    <<link "Watch the crow in the tree">>
+        <<run setup.setPendingStoryAction("Watch the crow in the tree")>>
+        <<goto "Under the Tree">>
+    <</link>>
+<<elseif $loopCount is 1>>
+    <<link "Go closer and see whether she remembers you">>
+        <<run setup.setPendingStoryAction("Go closer and see whether she remembers you")>>
+        <<goto "Under the Tree">>
+    <</link>>
+<<else>>
+    <<link "Repeat the familiar story">>
+        <<run setup.setPendingStoryAction("Repeat the familiar story")>>
+        <<goto "Under the Tree">>
+    <</link>>
+
+    <<link "Explore the world beyond the tree">>
+        <<run setup.setPendingStoryAction("Explore the world beyond the tree")>>
+        <<goto "Explore the Clearing">>
+    <</link>>
+
+    <<link "SAY or DO something else">>
+        <<run setup.activateFreeStory(3)>>
+        <<goto "Dynamic Morning">>
+    <</link>>
+<</if>>
 
 :: Under the Tree
 <section class="story-scene" data-log-scene="under-tree">
 <h1>Under the Tree</h1>
 
 <div class="story-copy">
+<<if $loopCount is 0>>
 You step beneath the branch and look up. The cheese is held tight in the crow's closed beak, its pale edge catching the morning light.
 
 If you can make her open her beak, the cheese will fall.
+<<elseif $loopCount is 1>>
+You step beneath the branch. The crow watches you without alarm. There is no anger in her eyes, no embarrassment, not even the caution of someone who has already lost one meal to you.
 
-<<if $loopCount is 1>>
-<div class="memory">The thought arrives before you choose it, as though you are repeating someone else's lines.</div>
-<<elseif $loopCount is 2>>
-<div class="memory">The old trick is waiting for you, but so is the unanswered worry in the crow's eyes.</div>
+The cheese is held tight in her closed beak. The same simple plan presents itself again: make her open it, and the cheese will fall.
+
+<div class="memory">You decide to repeat yesterday's words exactly. If she remembers, she cannot possibly fall for them twice.</div>
+<<else>>
+You step beneath the branch and take your old place. The crow watches without alarm, and the cheese waits in her closed beak.
+
+Every line of the familiar story is ready to be spoken again. You already know where it leads.
 <</if>>
 </div>
 </section>
 
 <p class="choice-label">An idea comes to you.</p>
 
-<<link "Begin by praising her feathers">>
-    <<run setup.setPendingStoryAction("Begin by praising her feathers")>>
-    <<goto "Flattery">>
-<</link>>
+<<if $loopCount is 1>>
+    <<link "Test her with the same compliment">>
+        <<run setup.setPendingStoryAction("Test her with the same compliment")>>
+        <<goto "Flattery">>
+    <</link>>
+<<else>>
+    <<link "Begin by praising her feathers">>
+        <<run setup.setPendingStoryAction("Begin by praising her feathers")>>
+        <<goto "Flattery">>
+    <</link>>
+<</if>>
 
 :: Flattery
 <section class="story-scene" data-log-scene="flattery">
 <h1>Beautiful Feathers</h1>
 
 <div class="story-copy">
+<<if $loopCount is 0>>
 “Good morning, Miss Crow,” you say with your most sincere smile. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
 
 The crow hears your praise and lifts her chest proudly. She still holds the cheese tight, but now she cannot look away.
+<<elseif $loopCount is 1>>
+“Good morning, Miss Crow,” you say. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
 
-<<if $loopCount > 0>>
-<div class="memory">You already know every word that comes next.</div>
+The crow lifts her chest proudly.
+
+It is not merely a similar reaction. The tilt of her head, the small ruffle along her neck, even the pleased gleam in her eye arrive exactly when you remember them.
+
+<div class="memory">She does not remember. Or the morning will not allow her to.</div>
+<<else>>
+“Good morning, Miss Crow,” you say. “What beautiful feathers you have. No one else in this forest looks half as splendid.”
+
+The crow lifts her chest proudly, just as she did on both mornings before this one. The third repetition feels less like persuasion than reciting a line whose ending you already know.
 <</if>>
 </div>
 </section>
 
 <p class="choice-label">One last step.</p>
 
-<<link "Ask her to sing for you">>
-    <<run setup.setPendingStoryAction("Ask her to sing for you")>>
-    <<goto "The Song">>
-<</link>>
+<<if $loopCount is 1>>
+    <<link "Ask for the same song">>
+        <<run setup.setPendingStoryAction("Ask for the same song")>>
+        <<goto "The Song">>
+    <</link>>
+<<else>>
+    <<link "Ask her to sing for you">>
+        <<run setup.setPendingStoryAction("Ask her to sing for you")>>
+        <<goto "The Song">>
+    <</link>>
+<</if>>
 
 :: The Song
 <section class="story-scene" data-log-scene="the-song">
 <h1>The Finest Voice in the Forest</h1>
 
 <div class="story-copy">
+<<if $loopCount is 0>>
 “A crow so beautiful must also have the finest voice in the forest,” you say. “Would you sing a song and let me hear it?”
 
 The crow raises her head. She can hardly wait to prove that your praise is true.
+<<elseif $loopCount is 1>>
+“A crow so beautiful must also have the finest voice in the forest,” you continue. “Would you sing a song and let me hear it?”
 
-<<if $loopCount is 2>>
-<div class="memory">For one instant she looks toward the bushes again. Then the story pulls both of you back into place.</div>
+Part of you expects her to clamp her beak shut and expose the joke.
+
+Instead, she raises her head, eager to sing—exactly as before.
+<<else>>
+You give the crow the same invitation to sing. She raises her head at the same moment, ready to complete the familiar scene.
+
+Nothing in the old script resists being repeated.
 <</if>>
 </div>
 </section>
 
 <p class="choice-label">You wait below.</p>
 
-<<link "Wait for her to open her beak">>
-    <<run setup.setPendingStoryAction("Wait for her to open her beak")>>
-    <<goto "The Cheese Falls">>
-<</link>>
+<<if $loopCount is 1>>
+    <<link "Wait and see whether the cheese falls again">>
+        <<run setup.setPendingStoryAction("Wait and see whether the cheese falls again")>>
+        <<goto "The Cheese Falls">>
+    <</link>>
+<<else>>
+    <<link "Wait for her to open her beak">>
+        <<run setup.setPendingStoryAction("Wait for her to open her beak")>>
+        <<goto "The Cheese Falls">>
+    <</link>>
+<</if>>
 
 :: The Cheese Falls
 <section class="story-scene" data-log-scene="cheese-falls">
@@ -1177,64 +1456,306 @@ The crow raises her head. She can hardly wait to prove that your praise is true.
 <div class="story-copy">
 “Caw—”
 
+<<if $loopCount is 0>>
 The moment the crow opens her beak, the cheese tumbles from the branch. You step forward and catch it neatly.
 
-The familiar trick has worked. Your hunger fades, and you finally have the thing you have pursued since morning.
+The trick has worked. At last, you have something to eat.
+<<elseif $loopCount is 1>>
+The cheese falls. Your body moves before surprise can slow it, and you catch the piece neatly between your paws.
 
-<<if $loopCount > 0>>
-<div class="memory">Success feels less like victory each time you repeat it.</div>
+The trick has worked a second time. Yet the cheese feels less like a prize than a piece of evidence.
+
+<div class="memory">Yesterday happened. The world put everything back. Whether the crow forgot—or was made to forget—you still cannot tell.</div>
+<<else>>
+The cheese falls for a third time, and you catch it without effort.
+
+The old story still works. It simply no longer answers the questions that keep you here.
 <</if>>
 </div>
 </section>
 
 <p class="choice-label">The story should end here.</p>
 
-<<link "Eat the cheese and face the evening">>
-    <<run setup.setPendingStoryAction("Eat the cheese and face the evening")>>
-    <<goto "Evening">>
-<</link>>
+<<if $loopCount is 1>>
+    <<link "Eat the cheese and watch what the evening does">>
+        <<run setup.setPendingStoryAction("Eat the cheese and watch what the evening does")>>
+        <<goto "Evening">>
+    <</link>>
+<<else>>
+    <<link "Eat the cheese and face the evening">>
+        <<run setup.setPendingStoryAction("Eat the cheese and face the evening")>>
+        <<goto "Evening">>
+    <</link>>
+<</if>>
 
 :: Evening
 <section class="story-scene" data-log-scene="evening">
 <h1>The Day Ends</h1>
 
 <div class="story-copy">
+<<if $loopCount is 0>>
 You have the cheese. By every rule you know, that should mean you have won.
 
 But as the sun sinks behind the trees, the colors drain from the clearing. Shadows slide back to their old places. The wind moves backward through the leaves, and the fullness in your stomach disappears.
 
-Somewhere above, you hear the beat of a crow's wings. When you open your eyes, you know you will see the same tree, the same crow, and the same piece of cheese.
+Somewhere above, you hear the beat of a crow's wings.
+<<elseif $loopCount is 1>>
+This time you do not mistake success for an ending.
+
+You watch the last light leave the clearing. The taste fades from your mouth. The weight in your stomach vanishes. Leaves lift from the ground and return to their branches.
+
+Just before the darkness closes, you look up at the crow and wonder whether tomorrow she will forget you again.
+<<else>>
+For the third time, evening takes back the cheese and restores the clearing.
+
+Repeating the trick has proved one thing: the familiar story remains available whenever you choose it. But following it again has brought you no closer to understanding the world beyond it.
+<</if>>
 </div>
 </section>
 
 <p class="choice-label">Wait...</p>
 
-<<if $loopCount < 2>>
-    <<link "The day is not ready to let you go.">>
+<<if $loopCount is 0>>
+    <<link "Sleep till the next day">>
+        <<set $loopCount += 1>>
+        <<goto "Morning">>
+    <</link>>
+<<elseif $loopCount is 1>>
+    <<link "Wake up again">>
         <<set $loopCount += 1>>
         <<goto "Morning">>
     <</link>>
 <<else>>
-    <<link "This time, refuse to repeat the old story.">>
-        <<set $loopCount = 3>>
+    <<link "Begin another morning without a fixed script">>
+        <<run setup.activateFreeStory(4)>>
         <<goto "Dynamic Morning">>
     <</link>>
 <</if>>
 
-:: Dynamic Morning
-<section class="story-scene" data-log-scene="dynamic-morning">
-<h1>A Question the Fable Never Asked</h1>
+:: Explore the Clearing
+<section class="story-scene" data-log-scene="explore-clearing">
+<h1>Beyond the Tree</h1>
 
 <div class="story-copy">
-The clearing resets for a fourth time. The crow is back on the branch with the cheese, but the old choices no longer feel inevitable.
+You turn away from the branch before the familiar compliment can form.
 
-You remember her anxious glances toward the bushes. You can speak, search, bargain, wait, or try something the written story never anticipated.
+Beyond the clearing, a narrow path passes between two pines. A shallow stream catches the morning light farther downhill. On the opposite side, the grass rises toward a line of dark rocks.
+
+These places were always here. Hunger simply made them irrelevant.
 </div>
 </section>
 
-<section class="fox-memory-panel">
-    <h2>What the fox remembers</h2>
-    <ul class="fox-memory-list"></ul>
+<p class="choice-label">Which part of the world will you explore?</p>
+
+<<link "Follow the path between the pines">>
+    <<set $explorationRoute = "pine">>
+    <<run setup.setPendingStoryAction("Follow the path between the pines")>>
+    <<goto "The Pine Path">>
+<</link>>
+
+<<link "Walk downstream and study the water">>
+    <<set $explorationRoute = "stream">>
+    <<run setup.setPendingStoryAction("Walk downstream and study the water")>>
+    <<goto "Downstream">>
+<</link>>
+
+<<link "Circle the edge of the clearing">>
+    <<set $explorationRoute = "edge">>
+    <<run setup.setPendingStoryAction("Circle the edge of the clearing")>>
+    <<goto "The Clearing Edge">>
+<</link>>
+
+:: The Pine Path
+<section class="story-scene" data-log-scene="pine-path">
+<h1>The Pine Path</h1>
+
+<div class="story-copy">
+You follow the narrow path until the old tree disappears behind you.
+
+A hollow stump stands where the path bends. Beside it, yellow flowers grow through a split in the earth. You count your steps and repeat each landmark silently: two pines, the fallen log, the hollow stump, the yellow flowers.
+
+For the first time, the day feels larger than the fable told about it.
+</div>
+</section>
+
+<<link "Test whether this path remembers your visit">>
+    <<run setup.setPendingStoryAction("Test whether this path remembers your visit")>>
+    <<goto "A Mark for Tomorrow">>
+<</link>>
+
+:: Downstream
+<section class="story-scene" data-log-scene="downstream">
+<h1>Downstream</h1>
+
+<div class="story-copy">
+You follow the stream away from the clearing.
+
+The water passes over twelve pale stones before slipping beneath a fallen trunk. You watch a leaf turn twice in the same small whirlpool, then continue downstream.
+
+You memorize the stones, the trunk, and the sound of the current. Tomorrow, you will know whether the stream repeats as precisely as the tree.
+</div>
+</section>
+
+<<link "Change something beside the stream">>
+    <<run setup.setPendingStoryAction("Change something beside the stream")>>
+    <<goto "A Mark for Tomorrow">>
+<</link>>
+
+:: The Clearing Edge
+<section class="story-scene" data-log-scene="clearing-edge">
+<h1>The Edge of the Clearing</h1>
+
+<div class="story-copy">
+You walk the full boundary of the clearing instead of approaching its center.
+
+On one side, thick ferns conceal the ground. On the other, three dark rocks form a crooked line. Farther around, an animal trail disappears beneath low branches.
+
+You build a map in your memory: tree, rocks, trail, ferns, stream, and back to the tree.
+</div>
+</section>
+
+<<link "Leave a marker at the clearing's edge">>
+    <<run setup.setPendingStoryAction("Leave a marker at the clearing's edge")>>
+    <<goto "A Mark for Tomorrow">>
+<</link>>
+
+:: A Mark for Tomorrow
+<section class="story-scene" data-log-scene="choose-marker">
+<h1>A Mark for Tomorrow</h1>
+
+<div class="story-copy">
+You choose a place you will recognize when the morning returns. The change must be simple enough to remember and deliberate enough that wind or rain cannot easily explain it away.
+</div>
+</section>
+
+<p class="choice-label">What mark will you leave?</p>
+
+<<if $explorationRoute is "pine">>
+    <<link "Move a smooth white stone into the hollow stump">>
+        <<set $explorationMarker = "stone">>
+        <<run setup.setPendingStoryAction("Move a smooth white stone into the hollow stump")>>
+        <<goto "The Marker">>
+    <</link>>
+<<elseif $explorationRoute is "stream">>
+    <<link "Move one of the twelve pale stones above the waterline">>
+        <<set $explorationMarker = "stone">>
+        <<run setup.setPendingStoryAction("Move one of the twelve pale stones above the waterline")>>
+        <<goto "The Marker">>
+    <</link>>
+<<else>>
+    <<link "Move the smallest dark rock beyond the crooked line">>
+        <<set $explorationMarker = "stone">>
+        <<run setup.setPendingStoryAction("Move the smallest dark rock beyond the crooked line")>>
+        <<goto "The Marker">>
+    <</link>>
+<</if>>
+
+<<link "Scratch a small cross into the damp earth">>
+    <<set $explorationMarker = "cross">>
+    <<run setup.setPendingStoryAction("Scratch a small cross into the damp earth")>>
+    <<goto "The Marker">>
+<</link>>
+
+<<link "Stack three fallen twigs against a landmark">>
+    <<set $explorationMarker = "twigs">>
+    <<run setup.setPendingStoryAction("Stack three fallen twigs against a landmark")>>
+    <<goto "The Marker">>
+<</link>>
+
+:: The Marker
+<section class="story-scene" data-log-scene="marker-left">
+<h1>Proof of This Morning</h1>
+
+<div class="story-copy">
+<<if $explorationMarker is "stone">>
+You lift the chosen stone from its old place and set it where its absence and its new position will both be obvious tomorrow.
+<<elseif $explorationMarker is "cross">>
+You scratch two clean lines into the damp earth. The small cross remains sharp-edged when you lift your paw.
+<<else>>
+You choose three fallen twigs of different lengths and lean them together against a landmark. They form a little structure no gust could create by accident.
+<</if>>
+
+The change is simple enough to recognize and small enough that no wind or animal should undo it before morning.
+
+You repeat the location and the shape of your marker until you are certain you will remember both.
+</div>
+</section>
+
+<p class="choice-label">There is time for one more test.</p>
+
+<<link "Go farther and see how far the route continues">>
+    <<set $explorationFinalStep = "farther">>
+    <<run setup.setPendingStoryAction("Go farther and see how far the route continues")>>
+    <<goto "The World's Shape">>
+<</link>>
+
+<<link "Return to the marker and make sure it remains in place">>
+    <<set $explorationFinalStep = "check">>
+    <<run setup.setPendingStoryAction("Return to the marker and make sure it remains in place")>>
+    <<goto "The World's Shape">>
+<</link>>
+
+<<link "Find a high point and memorize the shape of the land">>
+    <<set $explorationFinalStep = "high">>
+    <<run setup.setPendingStoryAction("Find a high point and memorize the shape of the land")>>
+    <<goto "The World's Shape">>
+<</link>>
+
+:: The World's Shape
+<section class="story-scene" data-log-scene="world-shape">
+<h1>How Far the Day Goes</h1>
+
+<div class="story-copy">
+<<if $explorationFinalStep is "farther">>
+You continue until the route narrows and the lowering light warns you to turn back. The forest does not end at the edge of the fable; it keeps opening into more paths than one day can hold.
+<<elseif $explorationFinalStep is "check">>
+You retrace your steps. The marker remains exactly where you left it. Whatever restores the world has not acted yet—it waits for the day to end.
+<<else>>
+You climb until you can see the old tree, the silver line of the stream, and the dark rise beyond the clearing. You fix their positions in your memory like points on a map.
+<</if>>
+
+The light is fading. You carry a larger map of the world back toward evening, together with one deliberate change that tomorrow can confirm or erase.
+</div>
+</section>
+
+<<link "Watch what evening does to the world">>
+    <<run setup.setPendingStoryAction("Watch what evening does to the world")>>
+    <<goto "Exploration Evening">>
+<</link>>
+
+:: Exploration Evening
+<section class="story-scene" data-log-scene="exploration-evening">
+<h1>The Third Evening</h1>
+
+<div class="story-copy">
+The clearing begins to rewind for the third time. Shadows retreat. Bent grass rises beneath your footprints. The routes you walked disappear into darkness.
+
+Somewhere beyond the trees, the marker you left is returned to its original state.
+
+Tomorrow, you can retrace your route and see whether the world restored it exactly.
+
+The old story is still waiting, but it is no longer the only script you know.
+</div>
+</section>
+
+<<link "Carry your map of the world into another morning">>
+    <<run setup.activateFreeStory(4)>>
+    <<goto "Dynamic Morning">>
+<</link>>
+
+:: Dynamic Morning
+<section class="story-scene" data-log-scene="dynamic-morning">
+<h1>A Morning Without a Fixed Script</h1>
+
+<div class="story-copy">
+I wake beneath the same tree, with the same crow above me and morning arranged exactly where it was before. The familiar choices are still waiting, but they no longer feel inevitable.
+
+<<if $explorationRoute>>
+<div class="memory">I remember the route I chose beyond the clearing and the marker I left before the world rewound.</div>
+<</if>>
+
+I can retrace my steps, test another part of the world, return to the old script, speak, wait, or try something the written story never anticipated.
+</div>
 </section>
 
 :: New Tomorrow
