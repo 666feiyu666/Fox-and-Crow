@@ -1259,14 +1259,14 @@ $(document).on(":passagedisplay", function () {
 <p>Choose whether the fox <strong>says</strong> something or <strong>does</strong> one action. The Story Agent will continue what can be seen and heard; only time moves by rule.</p>
 
 <div class="welcome-actions">
-<<link "Start the Story-first experience">>
-    <<run setup.startStoryFirst()>>
-    <<goto "Dynamic Morning">>
-<</link>>
-
 <<link "Play the complete fable prologue first">>
     <<run setup.startFullPrologue()>>
     <<goto "Morning">>
+<</link>>
+
+<<link "Start the Story-first experience">>
+    <<run setup.startStoryFirst()>>
+    <<goto "Dynamic Morning">>
 <</link>>
 </div>
 

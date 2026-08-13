@@ -45,6 +45,10 @@ class StorySourceTests(unittest.TestCase):
         self.assertIn('"start": "Welcome"', self.source)
         self.assertIn("Start the Story-first experience", self.source)
         self.assertIn("Play the complete fable prologue first", self.source)
+        self.assertLess(
+            self.source.index("Play the complete fable prologue first"),
+            self.source.index("Start the Story-first experience"),
+        )
         self.assertIn("STORY-FIRST · NODE 2.5", self.source)
 
     def test_say_do_controls_send_the_declared_contract(self):
