@@ -28,8 +28,9 @@ Render supplies `RENDER` and `PORT`; `backend/server.py` therefore binds to
    https://fox-and-crow-story-api.onrender.com
    ```
 
-2. Set `storyApiBaseUrl` near the beginning of `:: StoryScript` in
-   `src/story.twee` to that origin.
+2. Confirm that `storyApiBaseUrl` near the beginning of `:: StoryScript` in
+   `src/story.twee` matches that origin. The current test deployment uses
+   `https://fox-and-crow-story-api.onrender.com`.
 3. Rebuild the story:
 
    ```powershell

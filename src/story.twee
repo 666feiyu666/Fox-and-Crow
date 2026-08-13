@@ -635,9 +635,9 @@ body::before {
 }
 
 :: StoryScript [script]
-// Keep this empty for the local same-origin server. Before rebuilding the
-// itch.io release, set it to the Render origin, without a trailing slash.
-var storyApiBaseUrl = "";
+// The itch.io build calls the Render API. Local development can temporarily
+// set this to an empty string when using the same-origin server.
+var storyApiBaseUrl = "https://fox-and-crow-story-api.onrender.com";
 var activeStoryRequestController = null;
 var storyRunGeneration = 0;
 var selectedStoryLogDay = null;

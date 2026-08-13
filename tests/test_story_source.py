@@ -28,7 +28,10 @@ class StorySourceTests(unittest.TestCase):
         self.assertIn("Engine.restart();", self.source)
 
     def test_api_origin_is_configured_once_and_applied_to_every_api_path(self):
-        self.assertIn('var storyApiBaseUrl = "";', self.source)
+        self.assertIn(
+            'var storyApiBaseUrl = "https://fox-and-crow-story-api.onrender.com";',
+            self.source,
+        )
         self.assertIn("function storyApiUrl(path)", self.source)
         self.assertIn("fetch(storyApiUrl(path)", self.source)
 
