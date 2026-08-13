@@ -442,8 +442,13 @@ body::before {
     pointer-events: none;
 }
 
+.passage > br,
+.story-scene > br {
+    display: none;
+}
+
 .passage h1 {
-    margin: 0 0 1.7rem;
+    margin: 0 0 1rem;
     color: var(--ink);
     font-family: "Cormorant Garamond", Georgia, serif;
     font-size: clamp(2.1rem, 6vw, 3.1rem);
@@ -470,7 +475,7 @@ body::before {
 }
 
 .memory {
-    margin: 1.5rem 0;
+    margin: 0.8rem 0;
     padding: 0.8rem 1rem;
     border-left: 2px solid var(--accent);
     color: var(--muted);
@@ -480,7 +485,8 @@ body::before {
 }
 
 .choice-label {
-    margin-top: 2.5rem !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.45rem !important;
     color: var(--muted) !important;
     font-family: var(--ui-font);
     font-size: 0.75rem !important;
@@ -491,7 +497,7 @@ body::before {
 .passage a.link-internal,
 .passage .link-internal {
     display: block;
-    margin-top: 0.7rem;
+    margin-top: 0.45rem;
     padding: 1rem 1.15rem;
     border: 1px solid rgba(70, 81, 62, 0.5);
     border-radius: 1px;

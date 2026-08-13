@@ -81,6 +81,10 @@ class StorySourceTests(unittest.TestCase):
 
     def test_story_prose_uses_compact_paragraph_spacing(self):
         self.assertIn("margin: 0 0 0.75rem;", self.source)
+        self.assertIn(".passage > br,", self.source)
+        self.assertIn(".story-scene > br", self.source)
+        self.assertIn("margin: 0 0 1rem;", self.source)
+        self.assertIn("margin-top: 1.25rem !important;", self.source)
         self.assertIn("function normalizeStoryParagraphSpacing()", self.source)
         self.assertIn('paragraphBreak.className = "story-paragraph-break";', self.source)
         self.assertIn("normalizeStoryParagraphSpacing();", self.source)
