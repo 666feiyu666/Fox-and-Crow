@@ -13,6 +13,11 @@ class StorySourceTests(unittest.TestCase):
     def test_story_log_is_rendered_from_a_real_passage_header(self):
         self.assertIn(":: PassageHeader [nobr]", self.source)
         self.assertIn('class="story-log-open"', self.source)
+        self.assertIn('button.textContent = "Day " + dayRecord.day;', self.source)
+        self.assertIn('title.textContent = "Day " + selected.day;', self.source)
+        self.assertNotIn('State.variables.storyFirstActive ? "Loop " : "Day "', self.source)
+        self.assertIn("width: min(64rem, calc(100% - 2rem));", self.source)
+        self.assertIn("height: min(82vh, 48rem);", self.source)
         self.assertNotIn(":: StoryDisplay [nobr]", self.source)
 
     def test_fixed_choices_call_the_sugarcube_setup_function(self):
@@ -76,6 +81,9 @@ class StorySourceTests(unittest.TestCase):
         self.assertIn("-webkit-text-fill-color: var(--ink);", self.source)
         self.assertIn("-webkit-text-fill-color: rgba(86, 82, 71, 0.65);", self.source)
         self.assertIn("opacity: 1;", self.source)
+        self.assertIn(".ai-action-input:not(:disabled):hover,", self.source)
+        self.assertIn(".ai-action-input:not(:disabled):focus {", self.source)
+        self.assertIn("background-color: var(--paper-clear);", self.source)
 
     def test_second_day_repeats_the_fable_to_test_the_crows_memory(self):
         self.assertIn("Another piece? So soon?", self.source)

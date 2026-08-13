@@ -213,9 +213,10 @@ body::before {
 
 .story-log-dialog {
     box-sizing: border-box;
-    width: min(58rem, calc(100% - 2rem));
+    width: min(64rem, calc(100% - 2rem));
+    height: min(82vh, 48rem);
     max-width: none;
-    max-height: min(90vh, 54rem);
+    max-height: none;
     padding: 0;
     overflow: hidden;
     border: 1px solid rgba(56, 55, 47, 0.36);
@@ -233,7 +234,7 @@ body::before {
 .story-log-shell {
     display: flex;
     flex-direction: column;
-    max-height: min(90vh, 54rem);
+    height: 100%;
 }
 
 .story-log-header {
@@ -281,7 +282,7 @@ body::before {
 
 .story-log-content {
     flex: 1 1 auto;
-    min-height: 12rem;
+    min-height: 0;
     padding: 1.5rem clamp(1rem, 4vw, 2rem) 2rem;
     overflow-y: auto;
 }
@@ -631,7 +632,14 @@ body::before {
     opacity: 1;
 }
 
-.ai-action-input:focus {
+.ai-action-input:not(:disabled):hover,
+.ai-action-input:not(:disabled):focus {
+    color: var(--ink);
+    background-color: var(--paper-clear);
+    -webkit-text-fill-color: var(--ink);
+}
+
+.ai-action-input:not(:disabled):focus {
     outline: 2px solid rgba(105, 118, 91, 0.2);
     border-color: var(--accent-strong);
 }
@@ -724,11 +732,12 @@ body::before {
 
     .story-log-dialog {
         width: calc(100% - 0.75rem);
+        height: calc(100vh - 0.75rem);
         max-height: calc(100vh - 0.75rem);
     }
 
     .story-log-shell {
-        max-height: calc(100vh - 0.75rem);
+        height: 100%;
     }
 
     .story-log-header,
@@ -1027,7 +1036,7 @@ function renderStoryLog(day) {
         button.className = "story-log-day";
         button.dataset.day = String(dayRecord.day);
         button.setAttribute("aria-pressed", dayRecord.day === selectedStoryLogDay ? "true" : "false");
-        button.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + dayRecord.day;
+        button.textContent = "Day " + dayRecord.day;
         days.appendChild(button);
     });
 
@@ -1036,7 +1045,7 @@ function renderStoryLog(day) {
     });
     var title = document.createElement("h3");
     title.className = "story-log-day-title";
-    title.textContent = (State.variables.storyFirstActive ? "Loop " : "Day ") + selected.day;
+    title.textContent = "Day " + selected.day;
     content.appendChild(title);
 
     selected.entries.forEach(function (entry) {
