@@ -1,0 +1,12 @@
+runs/*
+!runs/.gitkeep
+
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+story_generator_colab_bundle.zip

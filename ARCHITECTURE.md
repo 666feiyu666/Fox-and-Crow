@@ -36,6 +36,18 @@ historical comparison material tied to baseline commit `142fd35`. They are not
 imported by the Node 2.5 server path and must not be mistaken for active runtime
 state. Node 3 can replace this simplified runtime after its architecture is verified.
 
+## Imported Agent-building implementation
+
+`agent/theory-guided-story-generator/` contains the earlier theory-guided
+solution approach for this downstream task. It generates five sequential story
+sections from explicit plot, world, context, constraint, and discourse
+configuration, and requires human acceptance before a section becomes context
+for the next section.
+
+The current Node 2.5 runtime does not import that package. The package is kept
+separate while the Agent solution and the runnable Fox-and-Crow MVP are
+reviewed and rewritten deliberately.
+
 ## Current limits
 
 - Sessions are process-local and are lost when the server restarts.

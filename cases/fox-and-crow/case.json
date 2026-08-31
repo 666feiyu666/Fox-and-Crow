@@ -1,0 +1,43 @@
+{
+  "schema_version": "counterfactual-case/v1",
+  "case_id": "fox-and-crow-no-deception",
+  "title": "The Fox and the Crow: alternatives to deception",
+  "source": {
+    "work": "The Fox and the Crow",
+    "tradition": "Aesop's fables",
+    "provenance": "Structural summary of the traditional fable; no modern translation is reproduced.",
+    "rights_status": "public_domain",
+    "rights_notes": "The underlying fable is treated as public domain. Specific modern translations, illustrations, and adaptations require separate rights review."
+  },
+  "target_audience": {
+    "status": "to_be_confirmed",
+    "description": "Children's literature adaptation; the precise age range has not yet been confirmed."
+  },
+  "canonical_action": {
+    "actor": "the fox",
+    "goal": "obtain the cheese held by the crow",
+    "action": "use deceptive flattery to induce the crow to sing",
+    "canonical_consequence": "the crow opens its beak, drops the cheese, and the fox obtains it"
+  },
+  "counterfactual_question": "What if the fox does not use deception and instead pursues another strategy?",
+  "invariants": [
+    "the fox wants to obtain food",
+    "the crow initially possesses the cheese",
+    "the fox and the crow can perceive and respond to one another",
+    "the proposal begins from the fable's recognizable encounter"
+  ],
+  "mutable_assumptions": [
+    "the fox's strategy for pursuing food",
+    "the crow's response to the fox",
+    "the relationship formed between the fox and the crow",
+    "subsequent conflicts and opportunities for choice",
+    "the ending and its possible interpretation"
+  ],
+  "output_request": {
+    "action_count": null,
+    "additional_constraints": [
+      "alternatives must differ in strategy rather than wording alone",
+      "themes and educational implications must be proposed as supported interpretations"
+    ]
+  }
+}
