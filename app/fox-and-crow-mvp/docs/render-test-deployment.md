@@ -7,7 +7,8 @@ the existing standard-library HTTP server and process-local sessions.
 
 1. Push this repository to the Git provider connected to Render.
 2. In Render, create a new Blueprint and select this repository. Render reads
-   `render.yaml` from the repository root.
+   `render.yaml` from the repository root and uses
+   `app/fox-and-crow-mvp/` as the service root directory.
 3. When prompted, enter `DEEPSEEK_API_KEY`. Do not add the key to the repository.
 4. Wait for the deploy to finish, then open the service health endpoint:
 
@@ -21,6 +22,8 @@ Render supplies `RENDER` and `PORT`; `backend/server.py` therefore binds to
 `0.0.0.0:$PORT` on Render while retaining `127.0.0.1:8000` for local use.
 
 ## Connect the itch.io build
+
+Run the following local build command from `app/fox-and-crow-mvp/`.
 
 1. Copy the service origin, without a trailing slash, for example:
 

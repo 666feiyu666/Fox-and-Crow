@@ -38,8 +38,9 @@ state. Node 3 can replace this simplified runtime after its architecture is veri
 
 ## Imported Agent-building implementation
 
-`agent/theory-guided-story-generator/` contains the earlier theory-guided
-solution approach for this downstream task. It generates five sequential story
+The repository-root `../../agent/theory-guided-story-generator/` contains the
+earlier theory-guided solution approach for this downstream task. It generates
+five sequential story
 sections from explicit plot, world, context, constraint, and discourse
 configuration, and requires human acceptance before a section becomes context
 for the next section.

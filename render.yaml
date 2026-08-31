@@ -3,6 +3,7 @@ services:
     name: fox-and-crow-story-api
     runtime: python
     plan: free
+    rootDir: app/fox-and-crow-mvp
     buildCommand: python -m compileall backend
     startCommand: python backend/server.py
     healthCheckPath: /health
