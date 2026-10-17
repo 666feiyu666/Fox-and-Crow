@@ -28,6 +28,8 @@
 
   /* One measure for the sheet, the composer and the pager. */
   --measure: 40rem;
+  --spread: 62rem;
+  --tool: 40rem;
   --gutter: clamp(1rem, 3.2vw, 1.8rem);
 }
 
@@ -389,13 +391,31 @@ button.back:hover:not(:disabled) {
 
 .page {
   width: 100%;
-  max-width: calc(var(--measure) + var(--gutter) * 2);
   margin: 0 auto;
-  padding: clamp(1.3rem, 2.6vw, 2.2rem) var(--gutter) clamp(1.8rem, 3.4vw, 2.6rem);
+  padding: clamp(1.3rem, 2.6vw, 2.2rem) 0 clamp(1.8rem, 3.4vw, 2.6rem);
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
   z-index: 2;
+}
+
+/* The shelf and the choice read on one page; the story opens on two. */
+
+.shelf,
+.pick,
+.story {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.shelf,
+.pick {
+  max-width: calc(var(--measure) + var(--gutter) * 2);
+}
+
+.story {
+  max-width: calc(var(--spread) + var(--gutter) * 2);
 }
 
 /* The sheet: one page of a book, with the stack of pages beneath it. */
@@ -454,7 +474,67 @@ button.back:hover:not(:disabled) {
 }
 
 .story .book {
-  min-height: clamp(17rem, 36vh, 23rem);
+  max-width: var(--spread);
+  min-height: clamp(19rem, 46vh, 29rem);
+}
+
+/* Two facing pages, joined at the spine. */
+
+.spread-pages {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.spread-pages::after {
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  bottom: -0.5rem;
+  left: 50%;
+  width: 2.6rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(21, 19, 15, 0) 0%,
+    rgba(21, 19, 15, 0.055) 42%,
+    rgba(21, 19, 15, 0.09) 50%,
+    rgba(21, 19, 15, 0.055) 58%,
+    rgba(21, 19, 15, 0) 100%
+  );
+}
+
+.page-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.page-side-left {
+  padding-right: clamp(1rem, 2vw, 1.8rem);
+}
+
+.page-side-right {
+  padding-left: clamp(1rem, 2vw, 1.8rem);
+}
+
+/* A page waiting to be written on gets one short rule, nothing more. */
+
+.page-side-empty {
+  min-height: 14rem;
+  justify-content: center;
+}
+
+.page-side-empty::before {
+  content: "";
+  width: 3rem;
+  height: 1px;
+  margin: 0 auto;
+  background: var(--rule);
 }
 
 .leaf-head {
@@ -684,8 +764,19 @@ button.back:hover:not(:disabled) {
 .composer,
 footer.note {
   width: 100%;
-  max-width: var(--measure);
   margin-inline: auto;
+}
+
+/* The bar spans the spread; the controls keep the comfortable reading width. */
+
+.story-bar {
+  max-width: var(--spread);
+}
+
+.pager,
+.composer,
+footer.note {
+  max-width: var(--tool);
 }
 
 .story-bar {
@@ -727,11 +818,13 @@ footer.note {
 }
 
 .page-opening > p,
+.page-side .narration p,
 .leaf-body .narration p {
   margin: 0 0 0.85rem;
 }
 
 .page-opening > p:last-child,
+.page-side .narration p:last-child,
 .leaf-body .narration p:last-child {
   margin-bottom: 0;
 }
@@ -746,6 +839,7 @@ footer.note {
 }
 
 .page-opening > p,
+.page-side .narration,
 .leaf-body .narration {
   font-size: 1.02rem;
   line-height: 1.88;
@@ -756,6 +850,7 @@ footer.note {
 
 /* Reading progress: a hairline of colour under the passage's own text. */
 
+.page-side .action,
 .leaf-body .action {
   margin: 0;
   padding-left: 0.85rem;
@@ -766,6 +861,7 @@ footer.note {
   color: var(--river);
 }
 
+.page-side .action .tag,
 .leaf-body .action .tag {
   margin-right: 0.55rem;
   font-family: var(--mono);
@@ -775,6 +871,7 @@ footer.note {
   color: var(--gold);
 }
 
+.page-side .page-pending,
 .leaf-body .page-pending {
   color: var(--dim);
   font-style: italic;
@@ -1186,6 +1283,32 @@ dialog.settings input:focus {
     gap: 1rem;
   }
 
+  /* On a narrow screen the two pages stack into one column. */
+
+  .spread-pages {
+    grid-template-columns: 1fr;
+  }
+
+  .spread-pages::after {
+    display: none;
+  }
+
+  .page-side {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .page-side + .page-side {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .page-side-empty {
+    display: none;
+  }
+
   .book {
     padding: 1.5rem 1.2rem 1.2rem;
     min-height: 22rem;
@@ -1212,6 +1335,7 @@ dialog.settings input:focus {
   }
 
   .page-opening > p,
+  .page-side .narration,
   .leaf-body .narration {
     font-size: 0.98rem;
     line-height: 1.82;

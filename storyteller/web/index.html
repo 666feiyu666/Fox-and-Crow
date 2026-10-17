@@ -188,12 +188,15 @@
           </div>
 
           <div class="book-wrap">
-            <article class="book" id="book">
+            <article class="book spread" id="book">
               <header class="leaf-head">
                 <span class="leaf-title" id="leaf-title"></span>
                 <span class="leaf-state" id="leaf-state"></span>
               </header>
-              <main class="leaf-body" id="log" aria-live="polite" aria-label="Story"></main>
+              <div class="spread-pages" id="spread" aria-live="polite" aria-label="Story">
+                <div class="page-side page-side-left" id="log-left"></div>
+                <div class="page-side page-side-right" id="log-right"></div>
+              </div>
               <footer class="leaf-foot">
                 <span class="leaf-label" id="leaf-label"></span>
                 <span class="leaf-gauge" id="leaf-gauge"></span>

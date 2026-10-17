@@ -123,13 +123,13 @@
       placeholderSay: "你说一句话……",
       placeholderDo: "你尝试一个动作……",
       send: "继续",
-      thinking: "讲故事的人正在想……",
+      thinking: "说书人正在想……",
       understandingTitle: "understander 正在读你传入的这个故事……",
       understandingBody: "它读你传入的原故事，推导出你扮演谁、世界是什么样，以及开场。",
       understandingSlow: "第一次要通读原文，可能要等一会儿。",
       tryNext: "可以试试",
       error: "故事暂时无法继续，请再试一次。",
-      note: "没有任何预写剧本。你写的每一句，都会由讲故事的人接着讲下去。",
+      note: "没有任何预写剧本。你写的每一句，都会由说书人接着讲下去。",
     },
   };
 
@@ -187,7 +187,8 @@
   const leafState = document.getElementById("leaf-state");
   const leafLabel = document.getElementById("leaf-label");
   const leafGauge = document.getElementById("leaf-gauge");
-  const log = document.getElementById("log");
+  const logLeft = document.getElementById("log-left");
+  const logRight = document.getElementById("log-right");
   const pagePrev = document.getElementById("page-prev");
   const pageNext = document.getElementById("page-next");
   const pagerCount = document.getElementById("pager-count");
@@ -214,7 +215,7 @@
   let ended = false;
   let shelfEntries = null;
   let passages = [];
-  let pageIndex = 0;
+  let spreadIndex = 0;
   let turning = false;
 
   function readUiLanguage() {
@@ -330,44 +331,68 @@
     return t("labelTurn", { n: passage.turn ?? turn });
   }
 
-  function renderLeafChrome() {
-    const total = Math.max(1, passages.length);
-    leafTitle.textContent = caseInfo ? caseText(caseInfo.title) : t("shelfTitle");
-    leafState.textContent = `${t("loopCount", { n: loop })} · ${t("turnCount", { n: turn })}`;
-    leafLabel.textContent = pageLabel(passages[pageIndex]);
-    leafGauge.textContent = roman(pageIndex + 1);
-    pagerCount.textContent = t("pageOf", { page: pageIndex + 1, pages: total });
-    pagePrev.disabled = pageIndex <= 0;
-    pageNext.disabled = pageIndex >= total - 1;
+  /* A spread shows two facing pages. The opening sits alone on the right of the
+     first spread; after that every spread carries the next left and right page. */
+
+  function slotFor(spread, side) {
+    if (spread <= 0) {
+      return side === "right" ? 0 : -1;
+    }
+    return side === "left" ? spread * 2 - 1 : spread * 2;
   }
 
-  function renderPage() {
-    const passage = passages[pageIndex];
-    log.replaceChildren();
+  function spreadOf(index) {
+    return Math.max(0, Math.ceil(index / 2));
+  }
+
+  function spreadCount() {
+    return Math.max(1, spreadOf(Math.max(0, passages.length - 1)) + 1);
+  }
+
+  function renderLeafChrome() {
+    const total = spreadCount();
+    const right = slotFor(spreadIndex, "right");
+    const current = passages[right] ? right : slotFor(spreadIndex, "left");
+    leafTitle.textContent = caseInfo ? caseText(caseInfo.title) : t("shelfTitle");
+    leafState.textContent = `${t("loopCount", { n: loop })} · ${t("turnCount", { n: turn })}`;
+    leafLabel.textContent = pageLabel(passages[current]);
+    leafGauge.textContent = roman(spreadIndex + 1);
+    pagerCount.textContent = t("pageOf", { page: spreadIndex + 1, pages: total });
+    pagePrev.disabled = spreadIndex <= 0;
+    pageNext.disabled = spreadIndex >= total - 1;
+  }
+
+  function renderPassage(container, passage) {
+    container.replaceChildren();
+    container.classList.toggle("page-side-empty", !passage);
     if (!passage) {
-      renderLeafChrome();
       return;
     }
     if (passage.kind === "opening") {
       const block = document.createElement("div");
       block.className = "page-opening";
       renderParagraphs(block, passage.text);
-      log.appendChild(block);
-    } else {
-      const line = document.createElement("p");
-      line.className = "action";
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = t(passage.type);
-      line.append(
-        tag,
-        document.createTextNode(passage.type === "say" ? `“${passage.text}”` : passage.text),
-      );
-      const body = document.createElement("div");
-      body.className = "narration";
-      renderParagraphs(body, passage.narration);
-      log.append(line, body);
+      container.appendChild(block);
+      return;
     }
+    const line = document.createElement("p");
+    line.className = "action";
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = t(passage.type);
+    line.append(
+      tag,
+      document.createTextNode(passage.type === "say" ? `“${passage.text}”` : passage.text),
+    );
+    const body = document.createElement("div");
+    body.className = "narration";
+    renderParagraphs(body, passage.narration);
+    container.append(line, body);
+  }
+
+  function renderSpread() {
+    renderPassage(logLeft, passages[slotFor(spreadIndex, "left")]);
+    renderPassage(logRight, passages[slotFor(spreadIndex, "right")]);
     renderLeafChrome();
   }
 
@@ -404,15 +429,15 @@
     back.cancel();
   }
 
-  async function goToPage(index, animate = true) {
-    const next = Math.max(0, Math.min(index, passages.length - 1));
-    if (next === pageIndex || turning) {
+  async function goToSpread(index, animate = true) {
+    const next = Math.max(0, Math.min(index, spreadCount() - 1));
+    if (next === spreadIndex || turning) {
       return;
     }
-    const forward = next > pageIndex;
+    const forward = next > spreadIndex;
     const apply = () => {
-      pageIndex = next;
-      renderPage();
+      spreadIndex = next;
+      renderSpread();
     };
     if (!animate || REDUCED_MOTION.matches) {
       apply();
@@ -515,7 +540,7 @@
       }
     }
     if (!storyView.hidden) {
-      renderPage();
+      renderSpread();
     }
     refreshRail();
   }
@@ -819,7 +844,7 @@
   async function startStory(caseId, language_) {
     storyLanguage = language_;
     passages = [];
-    pageIndex = 0;
+    spreadIndex = 0;
     turn = 0;
     setMessage("understandingTitle");
     setHints([]);
@@ -839,8 +864,8 @@
       turn = data.playerState.turn;
       ended = data.playerState.ended;
       passages = [{ kind: "opening", text: data.opening }];
-      pageIndex = 0;
-      renderPage();
+      spreadIndex = 0;
+      renderSpread();
       setMessage(null);
       refreshRail();
     } catch (error) {
@@ -854,7 +879,7 @@
 
   async function resumeRun(runId) {
     passages = [];
-    pageIndex = 0;
+    spreadIndex = 0;
     setMessage(null);
     setHints([]);
     setBusy(true);
@@ -880,8 +905,8 @@
               loop: passage.loop,
             },
       );
-      pageIndex = Math.max(0, passages.length - 1);
-      renderPage();
+      spreadIndex = spreadOf(Math.max(0, passages.length - 1));
+      renderSpread();
       setMessage(ended ? "ended" : null, undefined, ended ? "done" : undefined);
       refreshRail();
     } catch (error) {
@@ -923,7 +948,7 @@
       });
       setHints(ended ? [] : data.hints);
       setMessage(ended ? "ended" : null, undefined, ended ? "done" : undefined);
-      await goToPage(passages.length - 1);
+      await goToSpread(spreadOf(passages.length - 1));
       refreshRail();
     } catch (error) {
       setMessage(error.key || null, error.message || t("error"), "warn");
@@ -991,15 +1016,15 @@
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      goToPage(pageIndex - 1);
+      goToSpread(spreadIndex - 1);
     } else if (event.key === "ArrowRight") {
       event.preventDefault();
-      goToPage(pageIndex + 1);
+      goToSpread(spreadIndex + 1);
     }
   });
 
-  pagePrev.addEventListener("click", () => goToPage(pageIndex - 1));
-  pageNext.addEventListener("click", () => goToPage(pageIndex + 1));
+  pagePrev.addEventListener("click", () => goToSpread(spreadIndex - 1));
+  pageNext.addEventListener("click", () => goToSpread(spreadIndex + 1));
 
   restartButton.addEventListener("click", () => {
     const story = storyRoute();
