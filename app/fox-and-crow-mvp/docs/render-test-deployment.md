@@ -1,53 +1,45 @@
 # Render test deployment
 
-This is the minimal deployment path for the friends-only itch.io test. It keeps
-the existing standard-library HTTP server and process-local sessions.
+`render.yaml` at the repository root describes a single Python web service whose
+root directory is `app/fox-and-crow-mvp/`. That one process serves both the
+playable page and the Storyteller API, so there is no front-end build and nothing
+to upload separately.
 
-## Deploy the backend
+## Deploy
 
 1. Push this repository to the Git provider connected to Render.
-2. In Render, create a new Blueprint and select this repository. Render reads
-   `render.yaml` from the repository root and uses
-   `app/fox-and-crow-mvp/` as the service root directory.
-3. When prompted, enter `DEEPSEEK_API_KEY`. Do not add the key to the repository.
-4. Wait for the deploy to finish, then open the service health endpoint:
+2. Create a new Blueprint and select the repository. Render reads `render.yaml`.
+3. When prompted, enter `DEEPSEEK_API_KEY`. Never commit the key.
+4. Wait for the deploy, then open the service URL. The page loads immediately; the
+   first submitted line calls the Storyteller.
 
-   ```text
-   https://YOUR-SERVICE.onrender.com/health
-   ```
+`render.yaml` runs:
 
-   It should return `{"status": "ok"}`.
+```text
+buildCommand: python -m compileall backend
+startCommand: python backend/server.py
+healthCheckPath: /health
+```
 
-Render supplies `RENDER` and `PORT`; `backend/server.py` therefore binds to
-`0.0.0.0:$PORT` on Render while retaining `127.0.0.1:8000` for local use.
+Render supplies `RENDER` and `PORT`, so the server binds to `0.0.0.0:$PORT` there
+and stays on `127.0.0.1:8000` locally.
 
-## Connect the itch.io build
+## Verify a deployment
 
-Run the following local build command from `app/fox-and-crow-mvp/`.
+```text
+https://YOUR-SERVICE.onrender.com/health           -> {"status":"ok"}
+https://YOUR-SERVICE.onrender.com/                 -> the playable page
+```
 
-1. Copy the service origin, without a trailing slash, for example:
-
-   ```text
-   https://fox-and-crow-story-api.onrender.com
-   ```
-
-2. Confirm that `storyApiBaseUrl` near the beginning of `:: StoryScript` in
-   `src/story.twee` matches that origin. The current test deployment uses
-   `https://fox-and-crow-story-api.onrender.com`.
-3. Rebuild the story:
-
-   ```powershell
-   & '.\.tools\tweego-2.1.1\tweego.exe' -f sugarcube-2 -o '.\dist\index.html' '.\src'
-   ```
-
-4. Replace the existing itch.io upload with `dist/index.html` and test the
-   dynamic story flow.
+Then play one turn. A working turn returns a narration, two or three suggested
+actions, and an advanced day counter. A `503` means the key is missing or has no
+balance; a `502` means the model returned a ruling the runtime rejected, and the
+server terminal holds the detail.
 
 ## Expected test limitations
 
-- The free service sleeps after inactivity, so the first dynamic action can be
-  slower while it starts.
-- Sessions are stored in process memory. A Render restart or sleep clears them,
-  and the player must restart the story.
-- CORS intentionally allows browser requests from any origin for this test.
-  Narrow it before a public release if authentication or cookies are added.
+- The free service sleeps after inactivity; the first turn after a sleep is slower.
+- Sessions are process-local. A restart or sleep clears them, and the player must
+  restart the story.
+- CORS stays open so a separately hosted copy of `web/` can reach the API during
+  testing. Narrow it before any public release that adds authentication.

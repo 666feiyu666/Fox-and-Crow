@@ -1,5 +1,6 @@
 [project]
-name = "dh-interactive-storytelling"
-version = "0.1.0"
+name = "fox-and-crow-storyteller"
+version = "0.2.0"
+description = "A playable Fox-and-Crow story judged turn by turn by a Storyteller agent."
 requires-python = ">=3.13,<3.14"
 dependencies = []

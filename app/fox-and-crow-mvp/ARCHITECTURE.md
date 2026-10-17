@@ -1,57 +1,73 @@
-# Node 2.5 runtime architecture
+# Storyteller runtime architecture
 
-Node 2.5 is the active, distributable Story-first prototype. It intentionally does
-not implement the three-layer Node 3 architecture.
+The Fox and the Crow is now a playable story with an omniscient Storyteller. The
+Storyteller is the agent: it holds the whole world, judges what each line of the
+player changes, and narrates the consequence. There is no branching script and no
+Twine build.
 
 ```text
-SAY or DO input
-    -> HTTP validation
-    -> Story Agent (one model call)
-    -> deterministic one-unit time advance
-    -> optimistic session commit
-    -> narration, time, and Story Log UI
+player line (say or do)
+    -> POST /api/turn
+    -> phase 1: Storyteller rules on the action      (skill + world canon)
+    -> phase 2: Storyteller narrates the ruling      (skill + world canon)
+    -> session.py folds the ruling into authoritative state
+    -> narration, hints, day and loop returned to the page
 ```
 
-## Active responsibilities
+## Two phases, one judgement
 
-- `backend/server.py` validates `say` / `do`, maps errors, and exposes session APIs.
-- `backend/application/turns.py` enforces the generate-then-commit transaction.
-- `backend/story_runtime/state.py` owns only loop number, elapsed/remaining time,
-  time phase, and the five most recent visible turns used as narrative context.
-- `backend/story_agent/` defines the single Story Agent port.
-- `backend/infrastructure/deepseek.py` implements that port with one model request.
-- `src/story.twee` owns the welcome flow, input mode, visible time, loading/error
-  feedback, Story Log, restart flow, and responsive presentation.
+- **Ruling** answers a single question: given these characters and this world,
+  what does this action change? It returns outcome, price in time units,
+  relationship and insight deltas, new canon facts, a private scene plan, and
+  whether the loop ends. The player never sees this object.
+- **Narration** receives the ruling as final and writes the visible passage from
+  it. It may not re-judge, soften a failure, or add consequences the ruling did
+  not authorise.
 
-The Story Agent produces visible prose only. It does not decide victory, escape,
-inventory, relationships, trust, hunger, or other authoritative state. Every usable
-response costs exactly one of six time units. When the sixth unit is consumed, the
-runtime unconditionally starts the next loop. Model or network failure leaves the
-session unchanged.
+Splitting them keeps judgement auditable: the ruling is structured data that the
+runtime can validate, while the prose is free.
 
-## Historical Node 2 code
+## Who owns what
 
-`backend/game_system/`, `backend/game_agent/`, and their focused tests remain as
-historical comparison material tied to baseline commit `142fd35`. They are not
-imported by the Node 2.5 server path and must not be mistaken for active runtime
-state. Node 3 can replace this simplified runtime after its architecture is verified.
+| Concern | Owner |
+| --- | --- |
+| Role, procedure, fairness rules, output contracts | `skills/storyteller/SKILL.md` |
+| Canon: characters, places, loop rules, prohibitions | `skills/storyteller/world.md` |
+| Opening scene, in both languages | `skills/storyteller/openings.json` |
+| What a ruling is allowed to do to the session | `backend/session.py` |
+| Prompt assembly, skill loading, phase calls | `backend/storyteller.py` |
+| Model transport | `backend/model.py` |
+| HTTP surface, sessions, error mapping | `backend/server.py` |
+| Playable page, bilingual UI | `web/` |
 
-## Imported Agent-building implementation
+The skill is not documentation for humans only: it is loaded at startup and sent
+with every request. Editing the skill changes the Storyteller's behaviour without
+touching Python.
 
-The repository-root `../../agent/theory-guided-story-generator/` contains the
-earlier theory-guided solution approach for this downstream task. It generates
-five sequential story
-sections from explicit plot, world, context, constraint, and discourse
-configuration, and requires human acceptance before a section becomes context
-for the next section.
+## What the runtime enforces
 
-The current Node 2.5 runtime does not import that package. The package is kept
-separate while the Agent solution and the runnable Fox-and-Crow MVP are
-reviewed and rewritten deliberately.
+The Storyteller decides; the runtime refuses what would break the story.
+
+- A day holds six time units. The ruling prices each action in units (0–3), so a
+  line of dialogue can cost nothing and a walk to the bridge can cost most of the
+  day. When the day is spent, the loop advances to the next morning.
+- On reset the crow's trust returns to zero because she keeps no memory of the
+  previous day; the fox keeps its insight and the established facts.
+- Deltas, facts, and time costs are clamped and deduplicated. An unusable ruling
+  is rejected with `502`, and the session is left untouched.
+- A declared ending is accepted only after at least eight judged turns, insight of
+  at least 3, and crow trust of at least 3. Earlier claims are recorded as
+  `loop_break_refused` and play continues. This floor stops a single turn from
+  skipping the story; it does not replace the Storyteller's judgement.
+- Input is one line: at most 400 characters, `say` or `do`. One turn is in flight
+  per session (`409` otherwise), and a failed model call never advances time.
 
 ## Current limits
 
-- Sessions are process-local and are lost when the server restarts.
-- The five-turn context is visible-story memory, not structured world state.
-- Free input cannot determine victory or escape from the loop in Node 2.5.
-- Deployment and hosted mobile verification are separate from local completion.
+- Sessions live in process memory; a restart clears them.
+- Continuity comes from eight recent turns plus established facts, not from a
+  full narrative database.
+- The page and the API are served by one standard-library process; there is no
+  build step and no front-end framework.
+- Passing tests describe implementation behaviour only. They say nothing about
+  narrative quality, Agent capability, author utility, or research validity.
