@@ -75,6 +75,23 @@ class Storyteller:
         """Derive the case from the tale once per language, then reuse it."""
         return self.understanding_with_source(language)[0]
 
+    def fingerprint(self, language: str) -> str:
+        """What a derivation depends on, so a stored run can tell it still matches.
+
+        The tale, the language, the preparation, writer and review skills, the task
+        instructions, the repair budget, the model and the endpoint. Credentials are
+        deliberately absent.
+        """
+        return source_digest(json.dumps({
+            "source": self.case.source(language), "language": language,
+            "understand": self.case.understand, "writer": self.case.writer,
+            "reader_review": self.case.reader_review,
+            "tasks": [UNDERSTAND_TASK, OPENING_TASK, REVIEW_TASK],
+            "revision_limit": MAX_REVISIONS,
+            "model": getattr(self.model, "model", type(self.model).__name__),
+            "endpoint": getattr(self.model, "base_url", "stub"),
+        }, ensure_ascii=False, sort_keys=True))
+
     def understanding_with_source(self, language: str) -> tuple[Understanding, str]:
         """The understanding, plus how this call got it.
 
@@ -85,15 +102,7 @@ class Storyteller:
         source = self.case.source(language)
         # Include every preparation input, not credentials. A skill edit must take
         # effect even when the original tale has not changed.
-        digest = source_digest(json.dumps({
-            "source": source, "language": language,
-            "understand": self.case.understand, "writer": self.case.writer,
-            "reader_review": self.case.reader_review,
-            "tasks": [UNDERSTAND_TASK, OPENING_TASK, REVIEW_TASK],
-            "revision_limit": MAX_REVISIONS,
-            "model": getattr(self.model, "model", type(self.model).__name__),
-            "endpoint": getattr(self.model, "base_url", "stub"),
-        }, ensure_ascii=False, sort_keys=True))
+        digest = self.fingerprint(language)
         if language in self._understood and self._understood[language][0] == digest:
             return self._understood[language][1], UNDERSTANDING_REUSED
         understanding = self.cache.read(language, digest)

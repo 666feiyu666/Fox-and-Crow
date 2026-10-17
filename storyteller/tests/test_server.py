@@ -1,13 +1,16 @@
 import http.client
 import json
+import os
 import tempfile
 import threading
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from backend.case import Case
 from backend.model import ConfigurationError, ModelError
 from backend.server import SessionRegistry, create_server
+from backend.runs import RUNS_DIRNAME, RunStore
 from backend.storyteller import Storyteller
 from backend.understanding import UnderstandingCache
 from tests.fixtures import OPENING, review_payload, ruling_payload, understand_reply, understanding_payload
@@ -58,10 +61,13 @@ class ServerTestBase(unittest.TestCase):
         self.storyteller = Storyteller(self.case, model=self.model)
         self.storyteller.cache = UnderstandingCache(Path(self.tempdir.name))
         self.sessions = SessionRegistry()
+        self.run_store = RunStore(Path(self.tempdir.name) / RUNS_DIRNAME)
         self.server = create_server(
             port=0,
             storyteller=self.storyteller,
             sessions=self.sessions,
+            runs=self.run_store,
+            env_file=Path(self.tempdir.name) / ".env.local",
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -72,11 +78,12 @@ class ServerTestBase(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
 
-    def request(self, method, path, payload=None):
+    def request(self, method, path, payload=None, headers=None):
         connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         body = None if payload is None else json.dumps(payload)
-        headers = {} if body is None else {"Content-Type": "application/json"}
-        connection.request(method, path, body=body, headers=headers)
+        extra = {} if body is None else {"Content-Type": "application/json"}
+        extra.update(headers or {})
+        connection.request(method, path, body=body, headers=extra)
         response = connection.getresponse()
         raw = response.read().decode("utf-8")
         connection.close()
@@ -281,6 +288,120 @@ class ModelRejectionTests(ServerTestBase):
         status, payload = self.take_turn(self.new_session()["sessionId"])
         self.assertEqual(status, 503)
         self.assertIn("DEEPSEEK_API_KEY", payload["error"])
+
+
+class RunHistoryTests(ServerTestBase):
+    def runs(self):
+        status, payload = self.request("GET", "/api/runs")
+        self.assertEqual(status, 200)
+        return payload["runs"]
+
+    def test_a_new_session_is_stored_as_a_run(self):
+        session = self.new_session("zh")
+        runs = self.runs()
+        self.assertEqual([run["id"] for run in runs], [session["sessionId"]])
+        self.assertEqual(runs[0]["case"], FOX.id)
+        self.assertEqual(runs[0]["language"], "zh")
+        self.assertEqual(runs[0]["turn"], 0)
+        self.assertFalse(runs[0]["ended"])
+
+    def test_a_run_keeps_its_turns_and_can_be_resumed(self):
+        session = self.new_session("en")
+        self.take_turn(session["sessionId"], "nose the thorns")
+        self.sessions.discard(session["sessionId"])  # as if the process restarted
+        status, payload = self.request(
+            "POST", "/api/runs/resume", {"runId": session["sessionId"]}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["sessionId"], session["sessionId"])
+        self.assertEqual(
+            payload["playerState"],
+            {"language": "en", "loop": 1, "turn": 1, "ended": False},
+        )
+        self.assertEqual([item["kind"] for item in payload["passages"]], ["opening", "turn"])
+        self.assertEqual(payload["passages"][1]["narration"], "You move, and the world answers.")
+        self.assertEqual(payload["case"]["id"], FOX.id)
+
+    def test_a_resumed_run_can_take_another_turn(self):
+        session = self.new_session("en")
+        self.sessions.discard(session["sessionId"])
+        self.request("POST", "/api/runs/resume", {"runId": session["sessionId"]})
+        status, _ = self.take_turn(session["sessionId"], "listen")
+        self.assertEqual(status, 200)
+        self.assertEqual(self.runs()[0]["turn"], 1)
+
+    def test_an_unknown_run_is_not_resumed(self):
+        status, _ = self.request("POST", "/api/runs/resume", {"runId": "0" * 32})
+        self.assertEqual(status, 404)
+
+    def test_a_run_prepared_from_other_inputs_refuses_to_continue(self):
+        session = self.new_session("en")
+        record = self.run_store.load(session["sessionId"])
+        self.assertIsNotNone(record)
+        self.run_store.save(replace(record, digest="a-different-preparation"))
+        status, payload = self.request(
+            "POST", "/api/runs/resume", {"runId": session["sessionId"]}
+        )
+        self.assertEqual(status, 409)
+        self.assertIn("cannot continue", payload["error"])
+
+    def test_a_run_can_be_deleted(self):
+        session = self.new_session("en")
+        status, _ = self.request("POST", "/api/runs/delete", {"runId": session["sessionId"]})
+        self.assertEqual(status, 200)
+        self.assertEqual(self.runs(), [])
+
+
+class SettingsTests(ServerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.env_file = Path(self.tempdir.name) / ".env.local"
+        previous = os.environ.get("DEEPSEEK_API_KEY")
+
+        def restore():
+            if previous is None:
+                os.environ.pop("DEEPSEEK_API_KEY", None)
+            else:
+                os.environ["DEEPSEEK_API_KEY"] = previous
+
+        self.addCleanup(restore)
+
+    def test_settings_report_configuration_without_echoing_the_key(self):
+        status, payload = self.request("GET", "/api/settings")
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["configured"])
+        self.assertNotIn("apiKey", payload)
+
+    def test_a_key_written_from_this_machine_is_saved(self):
+        self.env_file.write_text(
+            "# local settings\nDEEPSEEK_MODEL=deepseek-flash\nDEEPSEEK_API_KEY=old-key\n",
+            encoding="utf-8",
+        )
+        status, payload = self.request("POST", "/api/settings", {"apiKey": "sk-test-123"})
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["configured"])
+        saved = self.env_file.read_text(encoding="utf-8")
+        self.assertIn("DEEPSEEK_API_KEY=sk-test-123", saved)
+        self.assertIn("DEEPSEEK_MODEL=deepseek-flash", saved)
+        self.assertNotIn("old-key", saved)
+        self.assertEqual(os.environ.get("DEEPSEEK_API_KEY"), "sk-test-123")
+
+    def test_a_key_is_appended_when_the_file_does_not_exist_yet(self):
+        status, _ = self.request("POST", "/api/settings", {"apiKey": "sk-fresh"})
+        self.assertEqual(status, 200)
+        self.assertIn("DEEPSEEK_API_KEY=sk-fresh", self.env_file.read_text(encoding="utf-8"))
+
+    def test_a_foreign_page_cannot_write_the_key(self):
+        status, _ = self.request(
+            "POST", "/api/settings", {"apiKey": "sk-remote"},
+            headers={"Origin": "https://example.invalid"},
+        )
+        self.assertEqual(status, 403)
+        self.assertFalse(self.env_file.exists())
+
+    def test_a_blank_key_is_rejected(self):
+        status, _ = self.request("POST", "/api/settings", {"apiKey": "   "})
+        self.assertEqual(status, 400)
 
 
 if __name__ == "__main__":

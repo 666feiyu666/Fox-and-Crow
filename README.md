@@ -12,16 +12,13 @@ writes?
 
 ## Research questions
 
-The project tests how a generative model enters a text game, and treats
+The project tests how a generative model enters a text game and becomes playable. It treats
 interactive narrative as the thing under study. Three questions organise the work.
 
 1. **Agency.** Can a player's typed line — something said, or something
    attempted — be shown to change where the story goes, judged turn by turn,
    instead of selecting among pre-authored options?
-2. **Constraint.** What structure keeps that freedom legible to the player? This
-   project's answer is a loop: the morning returns, only the protagonist keeps
-   the memory, and playing the original tale the way the tale goes does not
-   finish the story but repeats it.
+2. **Constraint.** What structure keeps that freedom legible to the player?
 3. **Grounding.** Can the model's freedom stay answerable to a source, so that
    the world remains the supplied tale's world while the outcome stops being the
    tale's outcome?
@@ -34,18 +31,6 @@ decided *after* it is written rather than chosen *before* from a list. There is 
 script, no branch tree, no clock, no score, and no rulebook enforced on top of the
 world the tale implies. A turn is playable when what the player wrote shows up in
 what happens next.
-
-## The loop as the constraint
-
-Every case is built as a loop, and the loop is the limit placed on the player. The
-same morning comes round again, only the protagonist remembers having lived it, and
-following the original story to its usual end leads back to the beginning. Playing
-the tale the way the tale goes is therefore not a way to win but the way to stay
-trapped. What breaks the loop is a judgement, not a printed rule: nothing in the
-engine scores it, and the page never tells the player how close they are.
-
-The stories are ones everybody already knows — the crow and the fox, Cinderella —
-so that the player arrives with expectations the loop can then refuse.
 
 ## How the generative side is built
 
@@ -91,12 +76,10 @@ capability, author utility, player agency, or research validity.
 
 ```bash
 cd storyteller
-python -m venv .venv                 # or: uv venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.local.example .env.local     # then set DEEPSEEK_API_KEY
-python backend/server.py             # every case on the shelf
-python backend/server.py --case fox-and-crow   # or just one
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt   # Windows: .venv\Scripts\python -m pip install -r requirements.txt
+cp .env.local.example .env.local                      # then set DEEPSEEK_API_KEY
+.venv/bin/python backend/server.py                    # Windows: .venv\Scripts\python backend\server.py
 ```
 
 Then open `http://127.0.0.1:8000`. The first session in a language makes the extra

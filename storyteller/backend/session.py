@@ -139,6 +139,17 @@ class Memory:
     loop: int
     text: str
 
+    @classmethod
+    def from_dict(cls, value: Any) -> "Memory":
+        try:
+            value = obj(value, "memory")
+            loop = value.get("loop")
+            if not isinstance(loop, int) or loop < 1:
+                raise ContractError("memory.loop must be a positive integer.")
+            return cls(loop, text(value.get("text"), "memory.text"))
+        except ContractError as error:
+            raise RulingError(str(error)) from error
+
     def to_dict(self) -> dict:
         return {"loop": self.loop, "text": self.text}
 
@@ -151,6 +162,25 @@ class Turn:
     player_input: str
     narration: str
     ruling: Ruling
+
+    @classmethod
+    def from_dict(cls, value: Any) -> "Turn":
+        try:
+            value = obj(value, "turn")
+            input_type = value.get("type")
+            if input_type not in ("say", "do"):
+                raise ContractError("turn.type must be say or do.")
+            number, loop = value.get("number"), value.get("loop")
+            if not isinstance(number, int) or number < 1:
+                raise ContractError("turn.number must be a positive integer.")
+            if not isinstance(loop, int) or loop < 1:
+                raise ContractError("turn.loop must be a positive integer.")
+            return cls(number, loop, input_type,
+                       text(value.get("text"), "turn.text", 400),
+                       text(value.get("narration"), "turn.narration", 3000),
+                       Ruling.from_dict(value.get("ruling")))
+        except ContractError as error:
+            raise RulingError(str(error)) from error
 
     def to_dict(self, *, private: bool = False) -> dict:
         value = {"number": self.number, "loop": self.loop, "type": self.input_type,
@@ -181,6 +211,52 @@ class StoryState:
     def to_wire(self) -> dict:
         return {"language": self.language, "loop": self.loop,
                 "turn": self.turn, "ended": self.ended}
+
+    def to_dict(self) -> dict:
+        """Everything a run file needs to restore this story on a later visit."""
+        return {
+            "language": self.language, "loop": self.loop, "turn": self.turn,
+            "ended": self.ended,
+            "initial_facts": [fact.to_dict() for fact in self.initial_facts],
+            "fixed_keys": list(self.fixed_keys),
+            "world_facts": [fact.to_dict() for fact in self.world_facts],
+            "loop_facts": [fact.to_dict() for fact in self.loop_facts],
+            "memories": [item.to_dict() for item in self.memories],
+            "turns": [turn.to_dict(private=True) for turn in self.turns],
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Any) -> "StoryState":
+        try:
+            payload = obj(payload, "state")
+            language = payload.get("language", "en")
+            if language not in ("en", "zh"):
+                raise ContractError("state.language must be en or zh.")
+            loop, turn = payload.get("loop", 1), payload.get("turn", 0)
+            if not isinstance(loop, int) or loop < 1:
+                raise ContractError("state.loop must be a positive integer.")
+            if not isinstance(turn, int) or turn < 0:
+                raise ContractError("state.turn must be a non-negative integer.")
+            return cls(
+                language=language, loop=loop, turn=turn,
+                initial_facts=tuple(Fact.from_dict(item) for item in
+                                    array(payload.get("initial_facts", []),
+                                          "state.initial_facts", 64)),
+                fixed_keys=texts(payload.get("fixed_keys", []), "state.fixed_keys", 64),
+                world_facts=tuple(Fact.from_dict(item) for item in
+                                  array(payload.get("world_facts", []),
+                                        "state.world_facts", 64)),
+                loop_facts=tuple(Fact.from_dict(item) for item in
+                                 array(payload.get("loop_facts", []),
+                                       "state.loop_facts", 64)),
+                memories=tuple(Memory.from_dict(item) for item in
+                               array(payload.get("memories", []), "state.memories", 400)),
+                turns=tuple(Turn.from_dict(item) for item in
+                            array(payload.get("turns", []), "state.turns", 500)),
+                ended=flag(payload.get("ended", False), "state.ended"),
+            )
+        except ContractError as error:
+            raise RulingError(str(error)) from error
 
     def to_agent_context(
         self, case: Case, player: str, input_type: InputType, action: str,

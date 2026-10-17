@@ -12,3 +12,4 @@ Presentation_SJTU
 .vscode
 .reasonix/
 cases/*/.generated/
+storyteller/.runs/

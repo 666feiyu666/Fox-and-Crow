@@ -12,64 +12,154 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="shell">
-      <section class="shelf" id="shelf-view">
-        <header class="shelf-head">
-          <div class="shelf-intro">
-            <h1 id="shelf-title">Playable stories</h1>
-            <p id="shelf-lede"></p>
-          </div>
-          <button id="shelf-language" class="quiet" type="button" aria-label="Switch language">
-            中文
+    <div class="app">
+      <aside class="rail" id="rail">
+        <div class="rail-head">
+          <a class="rail-home" href="#/" id="rail-home">Stories</a>
+          <button
+            type="button"
+            class="rail-toggle"
+            id="rail-toggle"
+            aria-expanded="false"
+            aria-controls="rail-body"
+          >
+            Past runs
           </button>
-        </header>
-        <ul class="shelf-list" id="shelf-list" aria-label="Stories"></ul>
-        <p class="message" id="shelf-message" role="status"></p>
-      </section>
-
-      <section class="story" id="story-view" hidden>
-        <header class="top">
-          <div class="title">
-            <button id="back" class="back" type="button">All stories</button>
-            <h1 id="story-title">Playable story</h1>
-            <p id="story-subtitle"></p>
-          </div>
-          <div class="controls">
-            <button id="restart" class="ghost" type="button">Restart</button>
-            <button id="language" type="button" aria-label="Switch language">中文</button>
-          </div>
-        </header>
-
-        <div class="status" aria-live="polite">
-          <span id="loop-label"></span>
-          <span id="turn-label"></span>
         </div>
 
-        <main id="log" aria-live="polite" aria-label="Story"></main>
+        <div class="rail-body" id="rail-body">
+          <h2 class="rail-title" id="rail-runs-title">Past runs</h2>
+          <ul class="rail-runs" id="rail-runs"></ul>
+          <p class="rail-empty" id="rail-empty" hidden></p>
+        </div>
 
-        <section class="composer" id="composer">
-          <div class="mode" role="group" aria-label="Input mode">
-            <button type="button" data-mode="say" aria-pressed="true" id="mode-say">Say</button>
-            <button type="button" data-mode="do" aria-pressed="false" id="mode-do">Do</button>
+        <button class="rail-settings" id="settings-open" type="button">Settings</button>
+      </aside>
+
+      <main class="page">
+        <section class="shelf" id="shelf-view">
+          <div class="book-wrap">
+            <article class="book">
+              <header class="leaf-head">
+                <span class="leaf-title" id="shelf-leaf-title"></span>
+                <span class="leaf-state" id="shelf-leaf-state"></span>
+              </header>
+              <div class="leaf-body">
+                <h1 class="book-title" id="shelf-title">Playable stories</h1>
+                <p class="book-lede" id="shelf-lede"></p>
+                <ul class="shelf-list" id="shelf-list" aria-label="Stories"></ul>
+                <p class="message" id="shelf-message" role="status"></p>
+              </div>
+              <footer class="leaf-foot">
+                <span class="leaf-label" id="shelf-leaf-label"></span>
+                <span class="leaf-gauge">I</span>
+              </footer>
+            </article>
           </div>
-          <div class="input-row">
-            <label class="sr-only" for="action" id="input-label">Your line or action</label>
-            <textarea
-              id="action"
-              rows="1"
-              maxlength="400"
-              placeholder="One line you say…"
-              autocomplete="off"
-            ></textarea>
-            <button class="primary" id="send" type="button">Send</button>
-          </div>
-          <div class="hints" id="hints"></div>
-          <p class="message" id="message" role="status"></p>
         </section>
 
-        <footer class="note" id="note"></footer>
-      </section>
+        <section class="pick" id="pick-view" hidden>
+          <div class="book-wrap">
+            <article class="book">
+              <header class="leaf-head">
+                <span class="leaf-title" id="pick-leaf-title"></span>
+                <span class="leaf-state" id="pick-leaf-state"></span>
+              </header>
+              <div class="leaf-body">
+                <a class="back" href="#/" id="pick-back">All stories</a>
+                <h1 class="book-title" id="pick-title"></h1>
+                <p class="book-quote" id="pick-quote"></p>
+                <p class="book-lede" id="pick-lede"></p>
+                <div class="pick-languages" id="pick-languages" role="group"></div>
+                <p class="message" id="pick-message" role="status"></p>
+              </div>
+              <footer class="leaf-foot">
+                <span class="leaf-label" id="pick-leaf-label"></span>
+                <span class="leaf-gauge">I</span>
+              </footer>
+            </article>
+          </div>
+        </section>
+
+        <section class="story" id="story-view" hidden>
+          <div class="story-bar">
+            <a class="back" href="#/" id="back">All stories</a>
+            <button id="restart" class="ghost" type="button">Restart</button>
+          </div>
+
+          <div class="book-wrap">
+            <article class="book" id="book">
+              <header class="leaf-head">
+                <span class="leaf-title" id="leaf-title"></span>
+                <span class="leaf-state" id="leaf-state"></span>
+              </header>
+              <main class="leaf-body" id="log" aria-live="polite" aria-label="Story"></main>
+              <footer class="leaf-foot">
+                <span class="leaf-label" id="leaf-label"></span>
+                <span class="leaf-gauge" id="leaf-gauge"></span>
+              </footer>
+            </article>
+          </div>
+
+          <nav class="pager" aria-label="Pages">
+            <button type="button" id="page-prev" aria-label="Previous page">←</button>
+            <span class="pager-count" id="pager-count"></span>
+            <button type="button" id="page-next" aria-label="Next page">→</button>
+          </nav>
+
+          <section class="composer" id="composer">
+            <div class="mode" role="group" aria-label="Input mode">
+              <button type="button" data-mode="say" aria-pressed="true" id="mode-say">Say</button>
+              <button type="button" data-mode="do" aria-pressed="false" id="mode-do">Do</button>
+            </div>
+            <div class="input-row">
+              <label class="sr-only" for="action" id="input-label">Your line or action</label>
+              <textarea
+                id="action"
+                rows="1"
+                maxlength="400"
+                placeholder="One line you say…"
+                autocomplete="off"
+              ></textarea>
+              <button class="primary" id="send" type="button">Send</button>
+            </div>
+            <div class="hints" id="hints"></div>
+            <p class="message" id="message" role="status"></p>
+          </section>
+
+          <footer class="note" id="note"></footer>
+        </section>
+      </main>
     </div>
+
+    <dialog class="settings" id="settings">
+      <form class="settings-form" id="settings-form">
+        <h2 id="settings-title">Settings</h2>
+
+        <fieldset class="settings-block">
+          <legend id="settings-language-label">Interface language</legend>
+          <div class="settings-languages" id="settings-languages"></div>
+        </fieldset>
+
+        <fieldset class="settings-block">
+          <legend id="settings-key-label">Story API key</legend>
+          <p class="settings-note" id="settings-note"></p>
+          <label class="sr-only" for="api-key" id="api-key-label">Story API key</label>
+          <input
+            id="api-key"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="sk-…"
+          />
+          <p class="settings-status" id="settings-status" role="status"></p>
+          <div class="settings-actions">
+            <button type="button" class="quiet" id="settings-close">Close</button>
+            <button type="submit" class="primary" id="settings-save">Save key</button>
+          </div>
+        </fieldset>
+      </form>
+    </dialog>
 
     <script src="app.js"></script>
   </body>

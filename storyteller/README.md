@@ -36,15 +36,36 @@ storyteller/
 
 ## Run a case
 
-```bash
-cd storyteller
-python -m venv .venv                # or: uv venv .venv
-source .venv/bin/activate           # Windows: .venv\Scripts\activate
-pip install -r requirements.txt     # LangGraph
-cp .env.local.example .env.local    # then set DEEPSEEK_API_KEY
-python backend/server.py                        # every case on the shelf
-python backend/server.py --case fox-and-crow    # or just one
+These commands use the virtual environment's own interpreter, so they work whether
+or not the environment is activated. Run them from this directory.
+
+**Windows (PowerShell or cmd)**
+
+```bat
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+copy .env.local.example .env.local
+.venv\Scripts\python backend\server.py
 ```
+
+**macOS / Linux**
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+cp .env.local.example .env.local
+.venv/bin/python backend/server.py
+```
+
+If you prefer `uv`, replace `python -m venv .venv` with `uv venv .venv` and install
+with `uv pip install -r requirements.txt --python .venv\Scripts\python` on Windows
+or `--python .venv/bin/python` elsewhere.
+
+`.env.local` is created once. If it already exists, edit it in place rather than
+copying over it, and put your key after `DEEPSEEK_API_KEY=`.
+
+The server prints the address it serves — `http://127.0.0.1:8000` by default — and
+the page opens on the shelf. `--port` moves it, for example `--port 8129`.
 
 The first session in a language runs the preparation calls: the understander reads
 the tale and the writer renders the opening, and the result is written to
@@ -53,17 +74,16 @@ Delete that file — or edit the tale — to have it derived again.
 
 `--case` takes a directory name under `cases/` or a path to a case directory;
 `STORYTELLER_CASE` is the fallback. Without either, one process serves every case
-under `cases/`, the page opens on the shelf, and each case gets its own
-Storyteller.
+under `cases/`, and each case gets its own Storyteller.
 
 ## Test
 
-```bash
-cd storyteller
-python -m unittest discover -s tests -t .
+```bat
+.venv\Scripts\python -m unittest discover -s tests -t .
 ```
 
-The tests use a stub model: they never call the API and never spend credit.
+On macOS or Linux use `.venv/bin/python` instead. The tests use a stub model: they
+never call the API and never spend credit.
 
 ## The loop, which every case shares
 
@@ -85,10 +105,35 @@ is plain JSON: read it, edit it, or delete it to force a fresh reading.
 
 ## Language
 
-A session is played in one language (`en` or `zh`). The tale is read and the case
-derived in that language, so the opening, every narration, the hints, and the
-judge's own notes are all in it. Switching language in the page restarts the story
-in the other language, reusing that language's derivation.
+A story is played in one language (`en` or `zh`), chosen after you pick the case
+and before it opens. That choice holds for the whole run: the tale is read and the
+case derived in that language, so the opening, every narration, the hints and the
+judge's own notes are all in it. A stored run keeps the language it was started in.
+
+The interface language is separate. The settings panel switches it between English
+and Chinese without touching the story, and remembers the choice in the browser.
+
+## Past runs and settings
+
+Every session is written to `storyteller/.runs/<run id>.json` after it is created
+and after every committed turn. The left rail lists those runs; opening one
+restores its story state and continues it. A run refuses to continue if the tale,
+the skills, the task instructions, the repair budget, the model or the endpoint
+changed since it was prepared — the fingerprint is stored with the run. Runs are
+plain JSON: delete one from the rail, or delete the file.
+
+Settings (bottom of the rail) holds two things: the interface language, and the
+story API key. Saving a key writes `DEEPSEEK_API_KEY` into `.env.local` beside the
+server and takes effect immediately, without a restart. That endpoint only accepts
+requests from this machine.
+
+## The page
+
+The page is set as a book: one sheet, a header naming the story and its loop and
+turn, and a footer with the page's own label and a roman page number. A turn is one
+page — the line you wrote and the passage it produced — and finishing a turn flips
+the sheet. The pager under the book, or the left and right arrow keys, reads back
+through earlier pages; a restored run opens on its last page.
 
 ## Read next
 

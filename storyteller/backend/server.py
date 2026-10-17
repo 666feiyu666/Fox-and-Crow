@@ -20,17 +20,29 @@ if __package__ in {None, ""}:  # Allow `python backend/server.py` from the proje
 
 from backend.case import LANGUAGES, Case, CaseError
 from backend.model import ConfigurationError, ChatModel, ModelError, load_env_local
+from backend.runs import RunError, RunRecord, RunStore
 from backend.session import RulingError, StoryState, apply_turn, initial_state
 from backend.storyteller import Storyteller
 from backend.understanding import Understanding
 
 MAX_INPUT_LENGTH = 400
 MAX_REQUEST_BYTES = 8192
-API_PATHS = ("/api/session", "/api/session/reset", "/api/turn")
+API_PATHS = (
+    "/api/session",
+    "/api/session/reset",
+    "/api/turn",
+    "/api/runs/resume",
+    "/api/runs/delete",
+    "/api/settings",
+)
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CASE_ROOT = REPOSITORY_ROOT / "cases"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNS_ROOT = PROJECT_ROOT / ".runs"
+ENV_FILE = PROJECT_ROOT / ".env.local"
 SENTENCE_END = re.compile(r"[。！？]|[.!?](?=\s|$)")
 EXCERPT_LIMIT = 180
+MAX_KEY_LENGTH = 200
 
 
 def first_sentence(text: str) -> str:
@@ -92,6 +104,12 @@ class SessionRegistry:
             self._states.pop(session_id, None)
             self._busy.discard(session_id)
 
+    def adopt(self, session_id: str, case_id: str, state: StoryState) -> None:
+        """Restore a stored run under its own id, so its later turns find it."""
+        with self._lock:
+            self._states[session_id] = (case_id, state)
+            self._busy.discard(session_id)
+
 
 class CaseLibrary:
     """Every case on the shelf, each with one Storyteller reused across sessions."""
@@ -149,6 +167,18 @@ class CaseLibrary:
                 self._storytellers[case.id] = Storyteller(case, model=self.model)
             return self._storytellers[case.id]
 
+    def set_api_key(self, api_key: str) -> None:
+        """A key set from the page takes effect without restarting the server."""
+        with self._lock:
+            if self.model is not None:
+                self.model.api_key = api_key
+            for storyteller in self._storytellers.values():
+                storyteller.model.api_key = api_key
+
+    @property
+    def model_name(self) -> str:
+        return getattr(self.model, "model", "") or ChatModel().model
+
     def _find(self, case_id: str) -> Case:
         case = self._load().get(case_id)
         if case is None:
@@ -175,10 +205,14 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         directory: str,
         library: CaseLibrary,
         sessions: SessionRegistry,
+        runs: RunStore,
+        env_file: Path,
         **kwargs: Any,
     ) -> None:
         self.library = library
         self.sessions = sessions
+        self.runs = runs
+        self.env_file = Path(env_file)
         super().__init__(*args, directory=directory, **kwargs)
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
@@ -194,6 +228,12 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         if path == "/api/cases":
             self._send_json(200, {"cases": [self._case_summary(case) for case in self.library.entries()]})
             return
+        if path == "/api/runs":
+            self._send_json(200, {"runs": self._run_summaries()})
+            return
+        if path == "/api/settings":
+            self._send_settings()
+            return
         super().do_GET()
 
     @staticmethod
@@ -203,6 +243,28 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             "title": dict(case.titles),
             "excerpt": {language: first_sentence(case.source(language)) for language in LANGUAGES},
         }
+
+    def _run_summaries(self) -> list[dict[str, Any]]:
+        summaries = []
+        for record in self.runs.read_all():
+            title = {language: record.case_id for language in LANGUAGES}
+            try:
+                title = dict(self.library.storyteller(record.case_id).case.titles)
+            except CaseError:
+                pass
+            last = record.state.turns[-1].narration if record.state.turns else record.opening
+            summaries.append({
+                "id": record.id,
+                "case": record.case_id,
+                "title": title,
+                "language": record.language,
+                "loop": record.state.loop,
+                "turn": record.state.turn,
+                "ended": record.state.ended,
+                "updated": record.updated,
+                "excerpt": first_sentence(last),
+            })
+        return summaries
 
     def do_OPTIONS(self) -> None:  # noqa: N802 - stdlib naming
         if urlsplit(self.path).path not in API_PATHS:
@@ -225,6 +287,12 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             self._create_session(payload)
         elif path == "/api/session/reset":
             self._reset_session(payload)
+        elif path == "/api/runs/resume":
+            self._resume_run(payload)
+        elif path == "/api/runs/delete":
+            self._delete_run(payload)
+        elif path == "/api/settings":
+            self._save_settings(payload)
         else:
             self._take_turn(payload)
 
@@ -288,6 +356,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
 
         session_id, state = self.sessions.create(storyteller.case.id, language, understanding)
+        self._save_run(storyteller, session_id, state, understanding.opening)
         self._send_json(
             201,
             {
@@ -310,6 +379,185 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
         self.sessions.discard(session_id)
         self._send_json(200, {"status": "ok"})
+
+    def _passages(self, record: RunRecord) -> list[dict[str, Any]]:
+        """The visible text of a run, in the order the player read it."""
+        passages = [{"kind": "opening", "text": record.opening}]
+        for turn in record.state.turns:
+            passages.append({
+                "kind": "turn", "type": turn.input_type, "text": turn.player_input,
+                "narration": turn.narration, "turn": turn.number, "loop": turn.loop,
+            })
+        return passages
+
+    def _resume_run(self, payload: dict[str, Any]) -> None:
+        run_id = payload.get("runId")
+        if set(payload) != {"runId"} or not isinstance(run_id, str):
+            self._send_json(400, {"error": "Resume request must contain runId."})
+            return
+        try:
+            record = self.runs.load(run_id)
+        except RunError as error:
+            self._send_json(400, {"error": str(error)})
+            return
+        if record is None:
+            self._send_json(404, {"error": "That run is not stored on this server."})
+            return
+        try:
+            storyteller = self.library.storyteller(record.case_id)
+        except CaseError:
+            self._send_json(404, {"error": "The case this run belongs to is not on the shelf."})
+            return
+        if storyteller.fingerprint(record.language) != record.digest:
+            self._send_json(409, {
+                "error": "This run was prepared with a different tale, skill set or model, "
+                         "so it cannot continue. Read it here, or start a new story.",
+            })
+            return
+        try:
+            understanding, source = storyteller.understanding_with_source(record.language)
+        except ConfigurationError:
+            self._send_json(
+                503, {"error": "The Storyteller is not configured yet. Try again later."}
+            )
+            return
+        except ModelError as error:
+            self._send_model_error(error)
+            return
+        except RulingError as error:
+            self.log_error("Understander output rejected: %s", error)
+            self._send_json(
+                502, {"error": "The Storyteller could not read this story. Try again."}
+            )
+            return
+        self.sessions.adopt(record.id, record.case_id, record.state)
+        self._send_json(
+            200,
+            {
+                "sessionId": record.id,
+                "case": {
+                    "id": record.case_id,
+                    "title": dict(storyteller.case.titles),
+                    "player": understanding.player,
+                },
+                "opening": record.opening,
+                "passages": self._passages(record),
+                "understandingSource": source,
+                "playerState": record.state.to_wire(),
+            },
+        )
+
+    def _delete_run(self, payload: dict[str, Any]) -> None:
+        run_id = payload.get("runId")
+        if set(payload) != {"runId"} or not isinstance(run_id, str):
+            self._send_json(400, {"error": "Delete request must contain runId."})
+            return
+        try:
+            self.runs.delete(run_id)
+        except RunError as error:
+            self._send_json(400, {"error": str(error)})
+            return
+        self.sessions.discard(run_id)
+        self._send_json(200, {"status": "ok"})
+
+    def _save_run(
+        self, storyteller: Storyteller, run_id: str, state: StoryState, opening: str,
+    ) -> None:
+        """Keep the run on disk after every commit, so a restart does not lose it."""
+        try:
+            existing = self.runs.load(run_id)
+        except RunError:
+            existing = None
+        opening = opening or (existing.opening if existing else "")
+        if not opening:
+            try:
+                opening = storyteller.understanding(state.language).opening
+            except (ConfigurationError, ModelError, RulingError):
+                opening = ""
+        if not opening:
+            self.log_error("Run %s was not saved: no opening passage to store.", run_id)
+            return
+        now = RunStore.now()
+        record = RunRecord(
+            id=run_id, case_id=storyteller.case.id, language=state.language,
+            opening=opening, digest=storyteller.fingerprint(state.language),
+            created=existing.created if existing else now, updated=now, state=state,
+        )
+        try:
+            self.runs.save(record)
+        except OSError as error:
+            self.log_error("Run %s could not be saved: %s", run_id, error)
+
+    def _settings_state(self) -> dict[str, Any]:
+        try:
+            configured = self.library.storyteller().configured
+        except CaseError:
+            configured = bool(getattr(self.library.model, "configured", False))
+        return {"configured": configured, "model": self.library.model_name}
+
+    def _send_settings(self) -> None:
+        self._send_json(200, self._settings_state(), cors=False)
+
+    def _save_settings(self, payload: dict[str, Any]) -> None:
+        if not self._is_local_origin():
+            self._send_json(
+                403, {"error": "Settings can only be changed from this machine."}, cors=False
+            )
+            return
+        api_key = payload.get("apiKey")
+        if set(payload) != {"apiKey"} or not isinstance(api_key, str):
+            self._send_json(400, {"error": "Settings must contain apiKey."}, cors=False)
+            return
+        api_key = api_key.strip()
+        if (
+            not api_key
+            or len(api_key) > MAX_KEY_LENGTH
+            or any(character in api_key for character in "\r\n")
+        ):
+            self._send_json(400, {"error": "That does not look like an API key."}, cors=False)
+            return
+        try:
+            self._write_env_key(api_key)
+        except OSError as error:
+            self.log_error("Cannot write %s: %s", self.env_file, error)
+            self._send_json(
+                500, {"error": "The key could not be saved next to the server."}, cors=False
+            )
+            return
+        os.environ["DEEPSEEK_API_KEY"] = api_key
+        self.library.set_api_key(api_key)
+        self._send_json(200, self._settings_state(), cors=False)
+
+    def _write_env_key(self, api_key: str) -> None:
+        lines: list[str] = []
+        if self.env_file.is_file():
+            lines = self.env_file.read_text(encoding="utf-8").splitlines()
+        written = False
+        updated: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            name = stripped[7:].strip() if stripped.startswith("export ") else stripped
+            if stripped and not stripped.startswith("#") and "=" in name:
+                if name.split("=", 1)[0].strip() == "DEEPSEEK_API_KEY":
+                    updated.append(f"DEEPSEEK_API_KEY={api_key}")
+                    written = True
+                    continue
+            updated.append(line)
+        if not written:
+            updated.append(f"DEEPSEEK_API_KEY={api_key}")
+        self.env_file.parent.mkdir(parents=True, exist_ok=True)
+        self.env_file.write_text("\n".join(updated).rstrip() + "\n", encoding="utf-8")
+
+    def _is_local_origin(self) -> bool:
+        """Writing a key to disk is a local act; a remote page may not trigger it."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        host = (urlsplit(origin).hostname or "").lower()
+        if host in {"localhost", "127.0.0.1", "::1"}:
+            return True
+        request_host = (self.headers.get("Host") or "").split(":")[0].strip().lower()
+        return bool(request_host) and host == request_host
 
     def _take_turn(self, payload: dict[str, Any]) -> None:
         if set(payload) != {"sessionId", "type", "text"}:
@@ -383,6 +631,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
 
         self.sessions.release(session_id, after)
+        self._save_run(storyteller, session_id, after, "")
         self._send_json(
             200,
             {
@@ -414,13 +663,16 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             },
         )
 
-    def _send_json(self, status: int, payload: dict[str, Any]) -> None:
+    def _send_json(
+        self, status: int, payload: dict[str, Any], *, cors: bool = True,
+    ) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
-        self._send_cors_headers()
+        if cors:
+            self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -439,6 +691,8 @@ def create_server(
     sessions: SessionRegistry | None = None,
     case: Case | None = None,
     cases: CaseLibrary | None = None,
+    runs: RunStore | None = None,
+    env_file: Path | None = None,
 ) -> ThreadingHTTPServer:
     project_root = Path(__file__).resolve().parents[1]
     static_dir = (web_dir or project_root / "web").resolve()
@@ -456,6 +710,8 @@ def create_server(
         directory=str(static_dir),
         library=cases,
         sessions=sessions or SessionRegistry(),
+        runs=runs or RunStore(RUNS_ROOT),
+        env_file=env_file or ENV_FILE,
     )
     return ThreadingHTTPServer((host, port), handler)
 
@@ -470,9 +726,8 @@ def main() -> None:
             "Omit it to put every case on the shelf."
         ),
     )
-    default_host = "0.0.0.0" if os.getenv("RENDER") else "127.0.0.1"
-    parser.add_argument("--host", default=default_host)
-    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
@@ -493,6 +748,8 @@ def main() -> None:
     server = create_server(host=args.host, port=args.port, cases=library)
     print(f"Playable stories: http://{args.host}:{args.port}")
     print(f"On the shelf: {', '.join(f'{case.id} ({case.title('en')})' for case in shelf)}")
+    print(f"Past runs: {RUNS_ROOT}")
+    print(f"Settings file: {ENV_FILE}")
     print(f"Storyteller model: {library.storyteller(shelf[0].id).model.model}")
     if env_loaded:
         print("Loaded local configuration from .env.local.")
