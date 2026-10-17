@@ -45,8 +45,8 @@ class StorytellerTests(unittest.TestCase):
         self.assertEqual(len(self.model.calls), 2)
         self.assertEqual(ruling.outcome, "failure")
         self.assertEqual(narration.text, "She turns her back.")
-        self.assertIn("phase 1 (ruling)", self.model.calls[0]["system"])
-        self.assertIn("phase 2 (narration)", self.model.calls[1]["system"])
+        self.assertIn("judge for this turn", self.model.calls[0]["system"])
+        self.assertIn("writer for this turn", self.model.calls[1]["system"])
 
     def test_the_prompt_carries_the_world_in_the_session_language(self):
         self.storyteller.resolve(initial_state("zh"), "do", "拨开荆棘")
@@ -71,13 +71,13 @@ class StorytellerTests(unittest.TestCase):
         model = StubModel([{"outcome": "bogus", "scene": "x"}])
         storyteller = Storyteller(FOX, model=model)
         with self.assertRaises(RulingError):
-            storyteller.rule("system", {"action": {"type": "do", "text": "x"}})
+            storyteller.judge("system", {"action": {"type": "do", "text": "x"}})
 
     def test_an_unusable_narration_is_rejected(self):
         model = StubModel([{"narration": ""}])
         storyteller = Storyteller(FOX, model=model)
         with self.assertRaises(RulingError):
-            storyteller.narrate(
+            storyteller.write(
                 "system",
                 {"action": {"type": "do", "text": "x"}},
                 Ruling.from_dict(ruling_payload()),

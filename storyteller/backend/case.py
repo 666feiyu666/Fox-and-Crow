@@ -1,8 +1,8 @@
-"""Case loading: the world, the opening, and the player of one story.
+"""Case loading: the world, the opening, the player, and the two agent skills.
 
 A case is data only — canon, an opening passage, and the character the player
-plays, each written in every supported language. The engine adds judgement and a
-page; it adds no rules of its own.
+plays, each written in every supported language. The engine adds a judge, a
+writer, and a page; it adds no rules of its own.
 """
 
 from __future__ import annotations
@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 LANGUAGES = ("en", "zh")
-ENGINE_SKILL = Path(__file__).resolve().parents[1] / "skills" / "storyteller" / "SKILL.md"
+STAGES = ("judge", "writer")
+SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
 
 class CaseError(RuntimeError):
@@ -51,6 +52,17 @@ def _document(directory: Path, kind: str, language: str) -> str:
     return text
 
 
+def _skill(skills: Path, stage: str) -> str:
+    path = Path(skills) / stage / "SKILL.md"
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except FileNotFoundError as error:
+        raise CaseError(f"Agent skill is missing: {path}") from error
+    if not text:
+        raise CaseError(f"Agent skill is empty: {path}")
+    return text
+
+
 @dataclass(frozen=True)
 class Case:
     id: str
@@ -58,14 +70,14 @@ class Case:
     players: Mapping[str, str]
     worlds: Mapping[str, str]
     openings: Mapping[str, str]
-    instructions: str
+    judge: str
+    writer: str
 
     @classmethod
-    def load(cls, directory: Path, skill: Path = ENGINE_SKILL) -> "Case":
+    def load(cls, directory: Path, skills: Path = SKILLS_DIR) -> "Case":
         directory = Path(directory)
         try:
             raw = json.loads((directory / "case.json").read_text(encoding="utf-8"))
-            instructions = skill.read_text(encoding="utf-8")
         except FileNotFoundError as error:
             raise CaseError(f"Case file is missing: {error.filename}") from error
         except json.JSONDecodeError as error:
@@ -79,7 +91,8 @@ class Case:
             players=_by_language(raw.get("player"), "player"),
             worlds={language: _document(directory, "world", language) for language in LANGUAGES},
             openings={language: _document(directory, "opening", language) for language in LANGUAGES},
-            instructions=instructions,
+            judge=_skill(skills, "judge"),
+            writer=_skill(skills, "writer"),
         )
 
     def title(self, language: str) -> str:
@@ -94,10 +107,16 @@ class Case:
     def opening(self, language: str) -> str:
         return self.openings.get(language) or self.openings["en"]
 
-    def system_prompt(self, language: str) -> str:
+    def _prompt(self, instructions: str, language: str) -> str:
         brief = (
             f"The player plays {self.player(language)}.\n"
-            f"The story language is {language}: write scene, facts, narration, and "
-            f"hints in {language}, and keep every name as this world writes it."
+            f"The story language is {language}: write everything in {language}, and "
+            f"keep every name as this world writes it."
         )
-        return f"{self.instructions}\n\n---\n\n{brief}\n\n---\n\n{self.world(language)}"
+        return f"{instructions}\n\n---\n\n{brief}\n\n---\n\n{self.world(language)}"
+
+    def judge_prompt(self, language: str) -> str:
+        return self._prompt(self.judge, language)
+
+    def writer_prompt(self, language: str) -> str:
+        return self._prompt(self.writer, language)

@@ -1,6 +1,6 @@
 [project]
 name = "fox-and-crow-storyteller"
-version = "0.2.0"
-description = "A playable Fox-and-Crow story judged turn by turn by a Storyteller agent."
+version = "0.3.0"
+description = "A playable story told by a judge agent and a writer agent, orchestrated with LangGraph."
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = ["langgraph>=1.2,<2"]

@@ -46,13 +46,16 @@ class FoxAndCrowCaseTests(unittest.TestCase):
         self.assertIn("moss", self.case.opening("en"))
         self.assertIn("苔藓", self.case.opening("zh"))
 
-    def test_skill_is_shared_by_every_case(self):
-        self.assertIn("storyteller", self.case.instructions.lower())
-        self.assertNotIn("fox", self.case.instructions.lower())
+    def test_both_agent_skills_are_shared_by_every_case(self):
+        self.assertIn("judge", self.case.judge.lower())
+        self.assertIn("writer", self.case.writer.lower())
+        skills = (self.case.judge + self.case.writer).lower()
+        self.assertNotIn("fox", skills)
+        self.assertNotIn("cinderella", skills)
 
-    def test_system_prompt_follows_the_session_language(self):
-        english = self.case.system_prompt("en")
-        chinese = self.case.system_prompt("zh")
+    def test_prompts_follow_the_session_language(self):
+        english = self.case.judge_prompt("en")
+        chinese = self.case.writer_prompt("zh")
         self.assertIn(self.case.world("en"), english)
         self.assertIn(self.case.world("zh"), chinese)
         self.assertIn("the fox", english)

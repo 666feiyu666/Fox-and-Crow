@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: storyteller
-    buildCommand: python -m compileall backend
+    buildCommand: pip install -r requirements.txt && python -m compileall backend
     startCommand: python backend/server.py
     healthCheckPath: /health
     envVars:

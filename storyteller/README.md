@@ -1,32 +1,40 @@
 # Storyteller
 
-A small engine for playable stories told by a generative LLM agent. The player is
-given an opening passage and a character; they write one line or one action at a
-time; the storyteller decides what that changes in the world and continues the
-story. There is no branching script, no build step, and no rulebook the engine
-enforces on top of the world the case describes.
+A small engine for playable stories told by two LLM agents. The player is given an
+opening passage and a character; they write one line or one action at a time; a
+**judge** agent decides what that changes in the world, and a **writer** agent
+turns that decision into the passage they read. The two run as a LangGraph state
+machine, one turn at a time.
+
+There is no branching script and no rulebook the engine enforces on top of the
+world the case describes.
 
 ```text
 storyteller/
-├── skills/storyteller/SKILL.md   the agent: role, procedure, output contracts
-├── backend/                      case loading, story state, two-phase agent, HTTP
-├── web/                          the playable page (no framework, no Twine)
-├── tests/                        offline tests for the engine and the cases
-└── docs/                         architecture notes and deployment
+├── skills/judge/SKILL.md    the judge: weighs the action, returns the ruling
+├── skills/writer/SKILL.md   the writer: turns the ruling into visible prose
+├── backend/graph.py         the turn graph (LangGraph): judge -> write
+├── backend/                 case loading, story state, model client, HTTP
+├── web/                     the playable page (no framework, no Twine)
+├── tests/                   offline tests for the graph, the agents, the cases
+└── docs/                    architecture notes
 ```
 
 ## Run a case
 
 ```bash
 cd storyteller
-cp .env.local.example .env.local     # then set DEEPSEEK_API_KEY
+python -m venv .venv                # or: uv venv .venv
+source .venv/bin/activate           # Windows: .venv\Scripts\activate
+pip install -r requirements.txt     # LangGraph
+cp .env.local.example .env.local    # then set DEEPSEEK_API_KEY
 python backend/server.py --case fox-and-crow
 python backend/server.py --case cinderella
 ```
 
 `--case` takes a directory name under `cases/` or a path to a case directory;
 `STORYTELLER_CASE` is the fallback. One process plays one case. Python 3.13 and
-the standard library only.
+LangGraph.
 
 ## Test
 
@@ -66,7 +74,7 @@ in the page restarts the story in the other language.
 ## Read next
 
 - `ARCHITECTURE.md` — how a turn flows, and what the runtime actually does.
-- `docs/storyteller-skill.md` — the agent's role and how to change it.
+- `docs/agent-skills.md` — the judge and the writer, and how to change them.
 - `../cases/<case>/README.md` — each story and what it is for.
 
 For a hosted test, deploy the service described by `../render.yaml`: its root

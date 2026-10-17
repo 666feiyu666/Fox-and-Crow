@@ -28,7 +28,7 @@ class StubModel:
     def complete_json(self, system, user, **kwargs):
         if self.fail is not None:
             raise self.fail
-        if "phase 1 (ruling)" in system:
+        if "judge for this turn" in system:
             self.turns += 1
             return {
                 "outcome": "partial",
