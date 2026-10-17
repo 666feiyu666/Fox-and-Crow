@@ -30,6 +30,11 @@ a negotiation may need several exchanges, and uneventful time may be compressed.
 Do not apply the same action-description-dialogue-hook pattern every turn.
 The suggested mode is craft guidance, not a compulsory paragraph template.
 
+If revision is supplied, follow its concrete editorial requests and preserve the
+strengths it identifies. A previous_candidate, when present, is an unpublished
+draft, not story history. Keep the supplied current ruling authoritative. Return
+a complete revised passage and hints, without discussing the review.
+
 A return makes the opening recognisable through a useful repeated detail and the
 character's remembered experience. An ending lets the consequences settle.
 Neither needs a moral, an announcement of a game rule or a new cliffhanger.

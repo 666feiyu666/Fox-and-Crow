@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from backend.case import Case
+from backend.review import ReviewRecord
 from backend.space import (
     ContractError, Event, Fact, Observation, WritingBrief, array, flag, obj, text, texts, unique,
 )
@@ -32,6 +33,7 @@ class Ruling:
     brief: WritingBrief
     restart: bool = False
     ending: bool = False
+    review_history: tuple[ReviewRecord, ...] = ()
 
     @classmethod
     def from_dict(cls, payload: Any) -> "Ruling":
@@ -155,6 +157,7 @@ class Turn:
                  "text": self.player_input, "narration": self.narration}
         if private:
             value["ruling"] = self.ruling.to_dict()
+            value["reviews"] = [item.to_dict() for item in self.ruling.review_history]
         return value
 
 

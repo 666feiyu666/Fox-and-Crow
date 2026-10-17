@@ -45,17 +45,19 @@ class FoxAndCrowCaseTests(unittest.TestCase):
         self.assertIn("乌鸦", self.case.source("zh"))
 
     def test_each_agent_skill_declares_name_and_description(self):
-        for skill in (self.case.understand, self.case.judge, self.case.writer):
+        for skill in (self.case.understand, self.case.judge, self.case.writer, self.case.reader_review):
             self.assertTrue(skill.startswith("---"), "skill must open with front matter")
             front_matter = skill.split("---")[1]
             self.assertIn("name:", front_matter)
             self.assertIn("description:", front_matter)
 
-    def test_three_agent_skills_are_shared_by_every_case(self):
+    def test_four_agent_skills_are_shared_by_every_case(self):
         self.assertIn("understander", self.case.understand.lower())
         self.assertIn("judge", self.case.judge.lower())
         self.assertIn("writer", self.case.writer.lower())
-        skills = (self.case.understand + self.case.judge + self.case.writer).lower()
+        self.assertIn("content editor", self.case.reader_review.lower())
+        skills = (self.case.understand + self.case.judge + self.case.writer
+                  + self.case.reader_review).lower()
         self.assertNotIn("fox", skills)
         self.assertNotIn("cinderella", skills)
 
@@ -75,6 +77,9 @@ class FoxAndCrowCaseTests(unittest.TestCase):
         self.assertIn("Writing craft for playable passages", chinese)
         self.assertIn("the fox", english)
         self.assertIn("The story language is zh", chinese)
+        review = self.case.review_prompt("en", DERIVED)
+        self.assertIn(DERIVED.canon, review)
+        self.assertIn("hidden-password", review)
 
     def test_unknown_language_falls_back_to_english(self):
         self.assertEqual(self.case.source("fr"), self.case.source("en"))

@@ -10,7 +10,7 @@ from backend.model import ConfigurationError, ModelError
 from backend.server import SessionRegistry, create_server
 from backend.storyteller import Storyteller
 from backend.understanding import UnderstandingCache
-from tests.fixtures import OPENING, ruling_payload, understand_reply, understanding_payload
+from tests.fixtures import OPENING, review_payload, ruling_payload, understand_reply, understanding_payload
 
 CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
@@ -35,6 +35,8 @@ class StubModel:
             return understand_reply(system, user)
         if user.startswith("Opening input:"):
             return OPENING
+        if user.startswith("Review input:"):
+            return review_payload()
         if self.fail is not None:
             raise self.fail
         if "judge for this turn" in system:
@@ -218,6 +220,29 @@ class ModelFailureTests(ServerTestBase):
 
 
 class UncommittedTurnTests(ServerTestBase):
+    def test_rejected_content_leaves_state_unchanged_and_can_retry(self):
+        session_id = self.new_session()["sessionId"]
+        _, before = self.sessions.claim(session_id)
+        self.sessions.release(session_id)
+        original = self.model.complete_json
+
+        def rejecting_review(system, user, **kwargs):
+            if user.startswith("Review input:"):
+                return review_payload("writer")
+            return original(system, user, **kwargs)
+
+        self.model.complete_json = rejecting_review
+        status, _ = self.take_turn(session_id)
+        self.assertEqual(status, 502)
+        _, after = self.sessions.claim(session_id)
+        self.sessions.release(session_id)
+        self.assertEqual(before, after)
+        self.assertFalse(after.turns)
+        self.model.complete_json = original
+        status, payload = self.take_turn(session_id)
+        self.assertEqual((status, payload["playerState"]["turn"]), (200, 1))
+        self.assertNotIn("review", str(payload).lower())
+
     def test_failed_writer_leaves_state_and_audit_untouched_and_can_retry(self):
         session_id = self.new_session()["sessionId"]
         _, before = self.sessions.claim(session_id)

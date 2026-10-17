@@ -1,8 +1,8 @@
 # Engine architecture
 
 A case provides its title and original tale in each supported language. The same
-three skills work for every case; no plot, object name, character or ending is
-hard-coded in the engine. One process serves one case.
+four skills work for every case; no plot, object name, character or ending is
+hard-coded in the engine. Each loaded case has its own Storyteller.
 
 ## Preparation
 
@@ -31,14 +31,16 @@ remain open for later completion. Characterization informs play without deciding
 the player's new intentions.
 
 The writer renders the opening seed using the same craft resource as turns.
-Preparation completes only when the space and the written opening both succeed.
+Reader-Review checks it before caching, with at most one writer repair. A problem
+in the prepared world itself stops preparation instead of creating a fictitious
+player turn. Preparation completes only when the opening passes content review.
 The result is cached in `cases/<case>/.generated/understanding.<lang>.json`.
 
 Schema version 2 invalidates older readings. The cache fingerprint covers the
-source, language, preparation and writer skills (including loaded craft), task
-instructions, model id and endpoint. Restart the process to load edited files.
-A compatible cached reading is reused without model calls. Preparation costs two
-calls when needed, and each ordinary turn costs two.
+source, language, preparation, writer and review skills (including loaded craft),
+task instructions, revision budget, model id and endpoint. Restart the process to
+load edited files. A compatible cached reading is reused without model calls.
+Preparation normally costs three calls, and an ordinary turn costs three.
 
 ## A turn
 
@@ -48,6 +50,10 @@ player action
   -> validate proposal and project its consequences (no mutation)
   -> writer: visible projection + perceptible events + brief + voice
   -> validate narration
+  -> reader-review: check content quality and creative direction
+       -> pass: publish
+       -> prose/presentation problem: writer -> review again
+       -> event/character/causal problem: judge -> writer -> review again
   -> commit state, knowledge, memory and complete ruling together
   -> return passage, optional hints and public status
 ```
@@ -75,6 +81,35 @@ observation targets, incompatible loop flags/modes and incomplete proposals are
 rejected before the turn writer is called. Oversized structured data is rejected
 rather than silently cut. These are structural and keyed consistency guarantees;
 natural-language causality and fair interpretation remain model responsibilities.
+
+## Content review and repair
+
+skills/reader-review/SKILL.md is a content editor, not a player simulator or a
+playability evaluator. It can read relevant canon, state, ruling and the candidate
+passage/hints. It checks direction, coherence, prose/voice/rhythm and presentation
+boundaries. It protects intentional ambiguity and quiet scenes, and may pass a
+candidate with minor suggestions. No literary score or compulsory excitement is
+used as a publication threshold.
+
+A review has pass/revise, an overall summary, strengths to preserve and up to six
+evidence-backed findings. Each finding names its owner, whether repair is required,
+category, location, evidence, reason and requested direction. Mixed blocking
+findings route to judge first. Review never directly edits prose, facts or outcomes.
+
+There is one shared repair budget per turn. All candidates are generated from the
+same original action and pre-turn state. A writer repair retains the ruling; a
+judge repair replaces the uncommitted proposal before rewriting. Minor notes do
+not consume a repair. The repaired candidate is reviewed again; another revise
+decision or a malformed report rejects the turn without state advancement.
+
+The judge receives the private report and previous proposal. The writer receives
+only preserve notes and writer-targeted location/category/request fields; private
+summary, evidence and reasons are excluded. Public wording in those forwarded
+fields remains the reviewer's responsibility, not a programmatic secrecy proof.
+
+Accepted turns keep their candidate versions and reviews in the private in-memory
+audit, accessible through Turn.to_dict(private=True). Public history and HTTP
+responses omit those reports. Rejected requests do not commit an audit turn.
 
 ## State and knowledge
 

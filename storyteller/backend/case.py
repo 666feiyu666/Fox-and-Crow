@@ -1,4 +1,4 @@
-"""Case loading: the original tale, its title, and the three agent skills.
+"""Case loading: the original tale, its title, and the shared agent skills.
 
 A case ships data only — the story it is built from, in every supported language,
 and a title. What the player is, what the world is, and what they read first are
@@ -15,7 +15,7 @@ from typing import Any, Mapping
 from backend.understanding import Understanding
 
 LANGUAGES = ("en", "zh")
-STAGES = ("understand", "judge", "writer")
+STAGES = ("understand", "judge", "writer", "reader-review")
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
 
@@ -80,6 +80,7 @@ class Case:
     understand: str
     judge: str
     writer: str
+    reader_review: str
 
     @classmethod
     def load(cls, directory: Path, skills: Path = SKILLS_DIR) -> "Case":
@@ -104,6 +105,7 @@ class Case:
             understand=_skill(skills, "understand"),
             judge=_skill(skills, "judge"),
             writer=_skill(skills, "writer"),
+            reader_review=_skill(skills, "reader-review"),
         )
 
     def title(self, language: str) -> str:
@@ -140,3 +142,8 @@ class Case:
         return (f"{self.writer}\n\nThe player plays {understanding.player}.\n"
                 f"The story language is {language}: write everything in {language}.\n"
                 f"\n# Story voice\n{understanding.space.style}")
+
+    def review_prompt(self, language: str, understanding: Understanding) -> str:
+        return (self._stage_prompt(self.reader_review, language, understanding)
+                + "\n\n# Prepared story space\n"
+                + json.dumps(understanding.space.to_dict(), ensure_ascii=False))

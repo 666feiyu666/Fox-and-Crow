@@ -34,6 +34,20 @@ OPENING = {"narration": "Cold air touches your hands.", "hints": []}
 NARRATION = {"narration": "The keeper turns away.", "hints": ["Wait."]}
 
 
+def review_payload(target=None, *, blocking=True, **overrides):
+    findings = [] if target is None else [{
+        "target": target, "blocking": blocking, "category": "clarity",
+        "location": "narration, first sentence", "evidence": "The keeper turns away.",
+        "reason": "The phrasing obscures the established response.",
+        "request": "Make the response clearer without changing what happens.",
+    }]
+    payload = {"decision": "revise" if target and blocking else "pass",
+               "summary": "Content review.", "preserve": ["The restrained voice."],
+               "findings": findings}
+    payload.update(overrides)
+    return payload
+
+
 def ruling_payload(**overrides):
     payload = {
         "intent": "Ask the keeper to hand over the parcel.",

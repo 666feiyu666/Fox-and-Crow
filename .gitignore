@@ -9,7 +9,6 @@ __pycache__/
 *.tmp
 .DS_Store
 Presentation_SJTU
-media
 .vscode
 .reasonix/
 cases/*/.generated/

@@ -33,6 +33,12 @@ changed situation without manufacturing a punishment for every harmless attempt.
 Resolve only as far as the next player decision. The possibilities supplied at
 preparation are optional material, not routes to complete or a whitelist of inputs.
 
+If revision is supplied, reconsider the prior proposal using its review and the
+same original action and pre-turn facts. The previous ruling and passage were
+never committed. Correct supported content problems; retain unaffected decisions.
+Editorial feedback cannot override established world constraints or create a new
+player intention. Return a complete replacement ruling, not a patch or commentary.
+
 ## Propose the turn
 
 - intent: the attempted action, without assigning a hidden moral motive.
