@@ -28,6 +28,7 @@ storyteller/
 ├── skills/reader-review/SKILL.md  the editor: reviews a passage before publication
 ├── backend/graph.py               the graphs (LangGraph): preparation, turn, repair
 ├── backend/understanding.py       the derived story space and its on-disk cache
+├── backend/runs.py                past runs: committed state and its fingerprint
 ├── backend/                       case loading, story state, model client, HTTP
 ├── web/                           the shelf and the playable page (no framework)
 ├── tests/                         offline tests for the graphs, the skills, the cases
@@ -62,7 +63,9 @@ with `uv pip install -r requirements.txt --python .venv\Scripts\python` on Windo
 or `--python .venv/bin/python` elsewhere.
 
 `.env.local` is created once. If it already exists, edit it in place rather than
-copying over it, and put your key after `DEEPSEEK_API_KEY=`.
+copying over it, and put your key after `DEEPSEEK_API_KEY=`. The same file carries
+`DEEPSEEK_MODEL` and `DEEPSEEK_BASE_URL`; any endpoint that speaks the
+OpenAI-compatible `/chat/completions` protocol and returns JSON objects will do.
 
 The server prints the address it serves — `http://127.0.0.1:8000` by default — and
 the page opens on the shelf. `--port` moves it, for example `--port 8129`.
@@ -129,16 +132,19 @@ requests from this machine.
 
 ## The page
 
-The page is set as a book: one sheet, a header naming the story and its loop and
-turn, and a footer with the page's own label and a roman page number. A turn is one
-page — the line you wrote and the passage it produced — and finishing a turn flips
-the sheet. The pager under the book, or the left and right arrow keys, reads back
-through earlier pages; a restored run opens on its last page.
+The page is set as an open book: two facing pages under one header naming the story
+and its loop and turn, and a footer carrying the page's own label and a roman page
+number. The opening takes the right-hand page of the first spread on its own; after
+that every spread holds one turn on the left and the next on the right, so the line
+you wrote stays visible beside the passage that answered it. Finishing a turn flips
+the spread. The pager under the book, or the left and right arrow keys, reads back
+through earlier spreads; a restored run opens on the spread holding its last
+passage. Below a 60rem viewport the two pages stack into a single column.
 
 ## Read next
 
 - `ARCHITECTURE.md` — how a turn flows, and what the runtime actually does.
-- `docs/agent-skills.md` — the three agents and how to change them.
+- `docs/agent-skills.md` — the four agent skills and how to change them.
 - `../cases/<case>/README.md` — each story and what it is for.
 
 The server serves the page and the API from one process on `127.0.0.1:8000` by

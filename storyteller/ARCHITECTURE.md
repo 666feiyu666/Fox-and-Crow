@@ -126,8 +126,11 @@ remain history with an explicit loop number.
 
 A memory reference has up to eight recent passages, plus established current facts
 and retained player memories. The full audit is kept in process memory; the model
-does not receive every private past ruling. There is no disk-backed session log,
-retrieval index or long-session memory compression yet.
+does not receive every private past ruling. A run is also written to
+`storyteller/.runs/<run id>.json` when it is created and after every committed turn,
+so committed play survives a restart and can be resumed; a resumed run restores the
+committed state, not the in-memory per-turn audit. There is still no retrieval index
+or long-session memory compression.
 
 ## The writer's boundary
 
@@ -161,8 +164,10 @@ Each language currently receives a separate preparation. This preserves the
 supplied source wording but does not guarantee identical interpretations between
 languages; cross-language equivalence remains a separate evaluation task.
 
-The HTTP surface retains language/loop/turn/ended status and narration/hints.
-Model or validation failure leaves the committed session untouched. Sessions
-remain process-local, and process restart clears them. Passing offline tests
-establishes implementation behavior, not prose quality, player agency or research
-validity.
+The HTTP surface exposes `/api/cases`, `/api/session`, `/api/turn`, `/api/runs`,
+`/api/runs/resume`, `/api/runs/delete`, `/api/settings` and `/health`. A response
+carries language/loop/turn/ended status with narration and hints. Model or validation
+failure leaves the committed session and its stored run untouched. Live sessions
+remain process-local, so a restart clears them; committed play can be resumed from
+`.runs/` while its fingerprint still matches. Passing offline tests establishes
+implementation behavior, not prose quality, player agency or research validity.

@@ -10,6 +10,28 @@ writes?
 - Cases: [`cases/fox-and-crow`](cases/fox-and-crow/README.md) (Aesop),
   [`cases/cinderella`](cases/cinderella/README.md) (Perrault)
 
+## What it looks like
+
+The shelf. Every tale arrives as bare text; before you begin it is read once, and
+that reading becomes the role you take, the world around you and the opening.
+
+![The shelf of playable stories](assets/general-interface.png)
+
+A turn in progress, on facing pages: what you wrote — and what it set off — on the
+left, the storyteller's answer on the right. Here the player has just told her
+stepmother she is going to the ball.
+
+![A turn of Cinderella in progress](assets/cinderella-example.png)
+
+The interface is part of the apparatus rather than decoration. It is set as a book
+instead of a chat window: the shelf lists each tale, the telling language is chosen
+before a run opens, past runs sit in a rail and can be reopened or deleted, and the
+interface language switches independently of the story's. A run is written to disk
+after every committed turn, so play can be picked up again later.
+
+There is no hosted instance. The engine runs locally and nothing is deployed from
+this repository.
+
 ## Research questions
 
 The project tests how a generative model enters a text game and becomes playable. It treats

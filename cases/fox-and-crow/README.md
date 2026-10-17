@@ -47,8 +47,9 @@ cd storyteller
 python backend/server.py --case fox-and-crow
 ```
 
-Then open `http://127.0.0.1:8000` and play. The language button in the top right
-restarts the story in the other language.
+Then open `http://127.0.0.1:8000`, choose the story on the shelf, and pick the
+language it is told in. That choice holds for the whole run; starting another run
+from the shelf lets you pick again.
 
 ## What this case is for
 
