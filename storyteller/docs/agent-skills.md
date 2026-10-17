@@ -4,7 +4,7 @@ A turn is handled by two agents, and the case they work on is derived by a third
 
 | Agent | File | Job |
 | --- | --- | --- |
-| understand | `storyteller/skills/understand/SKILL.md` | Read the original tale; derive the player's role, the canon, and the opening |
+| understand | `storyteller/skills/understand/SKILL.md` | First: read and abstract the tale into the canon the judge works from |
 | judge | `storyteller/skills/judge/SKILL.md` | Read the derived canon and the player's line; decide what changes |
 | writer | `storyteller/skills/writer/SKILL.md` | Take the ruling as final; write the visible passage and hints |
 

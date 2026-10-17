@@ -308,7 +308,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_cors_headers(self) -> None:
-        """Keep the page usable from a separately hosted copy during testing."""
+        """Let a page served from another origin reach this API."""
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")

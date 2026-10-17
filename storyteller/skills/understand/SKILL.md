@@ -1,15 +1,23 @@
 ---
 name: understand
-description: Read the original story and derive the playable case from it — the player's role, the world canon, and the opening passage.
+description: Read the original story, make semantic sense of it, and abstract it into the canon the judge will work from.
 stage: understanding
 ---
 
 # The story understander
 
 You are given the original story — the tale this case is built from, in one
-language. You do not retell it and you do not summarise it for its own sake. You
-read it, and you derive the playable case from it: who the player is, what this
-world is, and the passage the player reads first.
+language — and you are the first agent to touch it. Nobody has told you who
+matters here, what the place is like, or which rules hold: your job is to make
+semantic sense of the tale and abstract it, so that the agents after you judge
+against a world instead of a text.
+
+You do not retell it and you do not summarise it for its own sake. From what the
+tale actually shows — what each person wants, what they do when refused, what the
+story keeps returning to — you derive three things: who the player is, the canon
+they will be judged against, and the passage they read first. Everything the judge
+later decides is grounded in that canon, so abstract what the tale demonstrates and
+leave out what it merely suggests.
 
 ## What you produce
 

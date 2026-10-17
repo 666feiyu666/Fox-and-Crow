@@ -3,9 +3,10 @@
 A small engine for playable stories told by three LLM agents. A case ships only the
 original tale.
 
-1. **understand** reads that tale once per language and derives the case from it —
-   the player's role, the world canon, and the opening passage — cached beside the
-   case so it can be read, reviewed, and edited.
+1. **understand** comes first. It reads that tale, makes semantic sense of it, and
+   abstracts it into the canon — the player's role, the world, and the opening
+   passage — cached beside the case so it can be reviewed and edited. Everything
+   the other two agents do is grounded in that canon.
 2. **judge** decides what the player's line changes in that world.
 3. **write** turns that ruling into the passage the player reads.
 
@@ -85,9 +86,8 @@ in the other language, reusing that language's derivation.
 - `docs/agent-skills.md` — the three agents and how to change them.
 - `../cases/<case>/README.md` — each story and what it is for.
 
-For a hosted test, deploy the service described by `../render.yaml`: its root
-directory is `storyteller/`, it runs `python backend/server.py`, and it serves the
-page and the API from that one process.
+The server serves the page and the API from one process on `127.0.0.1:8000` by
+default; `--host` and `--port` override that.
 
 Passing tests describe implementation behaviour only; they do not establish
 narrative quality, Agent capability, author utility, or research validity.

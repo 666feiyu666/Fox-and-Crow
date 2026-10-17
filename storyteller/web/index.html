@@ -25,6 +25,7 @@
       </header>
 
       <div class="status" aria-live="polite">
+        <span id="loop-label"></span>
         <span id="turn-label"></span>
       </div>
 
@@ -36,7 +37,7 @@
           <button type="button" data-mode="do" aria-pressed="false" id="mode-do">Do</button>
         </div>
         <div class="input-row">
-          <label class="sr-only" for="action">Your line or action</label>
+          <label class="sr-only" for="action" id="input-label">Your line or action</label>
           <textarea
             id="action"
             rows="1"

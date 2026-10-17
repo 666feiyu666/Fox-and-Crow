@@ -24,8 +24,9 @@ player line (say or do)
 
 **Understanding** — `START -> understand -> END`:
 
-- **understand** — its own skill, `skills/understand/SKILL.md`. It reads the tale
-  and returns the player's role, the world canon, and the opening passage. The
+- **understand** — its own skill, `skills/understand/SKILL.md`. It reads the tale,
+  makes semantic sense of it, and abstracts it into the player's role, the world
+  canon, and the opening passage. The
   result is validated, fingerprinted against the tale, and cached at
   `cases/<case>/.generated/understanding.<lang>.json`.
 
@@ -94,6 +95,6 @@ The runtime is deliberately thin. It does not decide outcomes, endings, or pacin
 - Continuity is eight turns plus declared facts, not a narrative database.
 - The deriver is an LLM: two runs over the same tale can differ. The cache is what
   makes a run stable, and the cached JSON is meant to be reviewed and edited.
-- One process serves one case; a different case means a different deployment.
+- One process serves one case; a different case means a different process.
 - Passing tests describe implementation behaviour only. They say nothing about
   narrative quality, Agent capability, author utility, or research validity.

@@ -7,9 +7,11 @@
       languageLabel: "中文",
       switchLanguage: "Switch language",
       youAre: "You are {name}",
-      loopLabel: "Loop {loop} · Turn {turn}",
+      loopCount: "Loop {n}",
+      turnCount: "Turn {n}",
       again: "Another beginning",
       ended: "The story has ended. Restart to begin again.",
+      inputLabel: "Your line or action",
       say: "Say",
       do: "Do",
       placeholderSay: "One line you say…",
@@ -25,9 +27,11 @@
       languageLabel: "English",
       switchLanguage: "切换语言",
       youAre: "你扮演{name}",
-      loopLabel: "第 {loop} 次循环 · 第 {turn} 轮",
+      loopCount: "第 {n} 次",
+      turnCount: "第 {n} 轮",
       again: "又一次开始",
       ended: "故事结束了。重新开始可以再来一次。",
+      inputLabel: "你说的话，或你做的事",
       say: "说",
       do: "做",
       placeholderSay: "你说一句话……",
@@ -45,11 +49,13 @@
   const sendButton = document.getElementById("send");
   const message = document.getElementById("message");
   const hints = document.getElementById("hints");
+  const loopLabel = document.getElementById("loop-label");
   const turnLabel = document.getElementById("turn-label");
   const restartButton = document.getElementById("restart");
   const languageButton = document.getElementById("language");
   const note = document.getElementById("note");
   const storyTitle = document.getElementById("story-title");
+  const inputLabel = document.getElementById("input-label");
   const subtitle = document.getElementById("story-subtitle");
   const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 
@@ -58,7 +64,6 @@
   let caseInfo = null;
   let mode = "say";
   let busy = false;
-  let hasTurns = false;
   let messageKey = null;
   let loop = 1;
   let turn = 0;
@@ -91,7 +96,8 @@
   }
 
   function renderStatus() {
-    turnLabel.textContent = t("loopLabel", { loop, turn });
+    loopLabel.textContent = t("loopCount", { n: loop });
+    turnLabel.textContent = t("turnCount", { n: turn });
   }
 
   function caseText(table) {
@@ -115,6 +121,7 @@
     languageButton.setAttribute("aria-label", t("switchLanguage"));
     actionBox.placeholder = fromTable(mode === "say" ? "placeholderSay" : "placeholderDo");
     sendButton.textContent = t("send");
+    inputLabel.textContent = t("inputLabel");
     note.textContent = t("note");
     modeButtons.forEach((button) => {
       button.textContent = fromTable(button.dataset.mode === "say" ? "say" : "do");
@@ -166,7 +173,7 @@
   }
 
   function addNarration(text) {
-    const article = addEntry("turn");
+    const article = addEntry("turn fresh");
     const body = document.createElement("div");
     body.className = "narration";
     renderParagraphs(body, text);
@@ -223,7 +230,6 @@
   async function start() {
     log.replaceChildren();
     hints.replaceChildren();
-    hasTurns = false;
     turn = 0;
     setMessage(null);
     setBusy(true);
@@ -273,7 +279,6 @@
       loop = data.playerState.loop;
       turn = data.playerState.turn;
       ended = data.playerState.ended;
-      hasTurns = true;
       if (data.restart) {
         addDivider(t("again"));
       }
@@ -326,11 +331,7 @@
   languageButton.addEventListener("click", () => {
     language = language === "en" ? "zh" : "en";
     paintChrome();
-    if (hasTurns) {
-      restartButton.click();
-    } else if (!sessionId) {
-      start();
-    }
+    restartButton.click();
   });
 
   paintChrome();
