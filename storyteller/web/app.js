@@ -4,26 +4,26 @@
   const I18N = {
     en: {
       restart: "Restart",
-      storyTitle: "The Fox and the Crow",
-      subtitle: "A Day in Loop",
       languageLabel: "中文",
       switchLanguage: "Switch language",
-      day: "Day",
+      youAre: "You are {name}",
+      day: "Day {n}",
+      turnLabel: "Turn {n}",
       morning: "morning",
       afternoon: "afternoon",
       evening: "evening",
       remaining: "of the day left",
       say: "Say",
       do: "Do",
-      placeholderSay: "One line the fox says…",
-      placeholderDo: "One action the fox attempts…",
+      placeholderSay: "One line you say…",
+      placeholderDo: "One action you attempt…",
       send: "Send",
       thinking: "The Storyteller is judging your line…",
       tryNext: "Could try",
       newMorning: "Another morning",
-      endingTitle: "The loop has ended",
-      endingText:
-        "The day moves forward again. Start a new story to meet the crow once more.",
+      dayClosed: "The day ends",
+      endingTitle: "The story has ended",
+      endingText: "Start a new story to play again.",
       ended: "This story has ended. Restart to begin a new one.",
       error: "The story could not continue. Try again.",
       note:
@@ -31,32 +31,32 @@
     },
     zh: {
       restart: "重新开始",
-      storyTitle: "狐狸与乌鸦",
-      subtitle: "循环中的一天",
       languageLabel: "English",
       switchLanguage: "切换语言",
-      day: "第",
+      youAre: "你扮演{name}",
+      day: "第{n}天",
+      turnLabel: "第 {n} 轮",
       morning: "清晨",
       afternoon: "午后",
       evening: "黄昏",
       remaining: "日内剩余时间",
       say: "说",
       do: "做",
-      placeholderSay: "狐狸说一句话……",
-      placeholderDo: "狐狸尝试一个动作……",
+      placeholderSay: "你说一句话……",
+      placeholderDo: "你尝试一个动作……",
       send: "继续",
       thinking: "讲故事的人正在裁定你这一句……",
       tryNext: "可以试试",
       newMorning: "又一个清晨",
-      endingTitle: "循环结束了",
-      endingText: "时间重新向前走。若要再见到乌鸦，请重新开始一个故事。",
+      dayClosed: "这一天结束了",
+      endingTitle: "故事结束了",
+      endingText: "重新开始，可以再玩一次。",
       ended: "这个故事已经结束，重新开始才能继续。",
       error: "故事暂时无法继续，请再试一次。",
       note: "讲故事的人读你写的每一句，再决定它改变了什么。故事没有任何预写剧本。",
     },
   };
 
-  const TOTAL_UNITS = 6;
   const log = document.getElementById("log");
   const actionBox = document.getElementById("action");
   const sendButton = document.getElementById("send");
@@ -70,21 +70,32 @@
   const clock = document.getElementById("clock");
   const remainingLabel = document.getElementById("remaining-label");
   const restartButton = document.getElementById("restart");
-  const subtitle = document.getElementById("story-subtitle");
-  const storyTitle = document.getElementById("story-title");
   const languageButton = document.getElementById("language");
   const note = document.getElementById("note");
+  const storyTitle = document.getElementById("story-title");
+  const subtitle = document.getElementById("story-subtitle");
   const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 
   let language = document.documentElement.lang === "zh" ? "zh" : "en";
   let sessionId = null;
+  let caseInfo = null;
   let mode = "say";
   let busy = false;
   let hasTurns = false;
   let messageKey = null;
-  let state = { loop: 1, elapsedUnits: 0, remainingUnits: TOTAL_UNITS, phase: "morning", ended: false };
+  let state = { turn: 0, day: 1, hasClock: false, ended: false };
 
-  const t = (key) => (I18N[language][key] ?? I18N.en[key] ?? key);
+  function t(key, vars) {
+    const template = I18N[language][key] ?? I18N.en[key] ?? key;
+    if (!vars) {
+      return template;
+    }
+    return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ""));
+  }
+
+  function fromTable(key, language_ = language) {
+    return I18N[language_][key] ?? I18N.en[key] ?? key;
+  }
 
   function setMessage(key, text) {
     messageKey = key;
@@ -100,24 +111,31 @@
     });
   }
 
+  function applyCase() {
+    if (!caseInfo) {
+      return;
+    }
+    const title = caseInfo.title?.[language] || caseInfo.title?.en || "";
+    storyTitle.textContent = title;
+    subtitle.textContent = t("youAre", { name: caseInfo.playerCharacter });
+    document.title = title;
+  }
+
   function paintChrome() {
     document.documentElement.lang = language;
     restartButton.textContent = t("restart");
-    storyTitle.textContent = t("storyTitle");
-    subtitle.textContent = t("subtitle");
-    document.title = `${t("storyTitle")}: ${t("subtitle")}`;
     languageButton.textContent = t("languageLabel");
     languageButton.setAttribute("aria-label", t("switchLanguage"));
-    actionBox.placeholder = mode === "say" ? t("placeholderSay") : t("placeholderDo");
+    actionBox.placeholder = fromTable(mode === "say" ? "placeholderSay" : "placeholderDo");
     sendButton.textContent = t("send");
     note.textContent = t("note");
     modeButtons.forEach((button) => {
-      const label = button.dataset.mode === "say" ? "say" : "do";
-      button.textContent = t(label);
+      button.textContent = fromTable(button.dataset.mode === "say" ? "say" : "do");
       button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
     });
     endingTitle.textContent = t("endingTitle");
     endingText.textContent = t("endingText");
+    applyCase();
     renderStatus();
     if (state.ended) {
       setMessage("ended");
@@ -127,17 +145,26 @@
   }
 
   function renderStatus() {
-    dayLabel.textContent =
-      language === "zh" ? `第${state.loop}天` : `${t("day")} ${state.loop}`;
-    phaseLabel.textContent = t(state.phase);
-    remainingLabel.textContent = `${state.remainingUnits} / ${TOTAL_UNITS} ${t("remaining")}`;
-    clock.replaceChildren(
-      ...Array.from({ length: TOTAL_UNITS }, (_, index) => {
-        const pip = document.createElement("span");
-        pip.className = index < state.elapsedUnits ? "pip used" : "pip";
-        return pip;
-      }),
-    );
+    if (state.hasClock) {
+      dayLabel.textContent = t("day", { n: state.day });
+      phaseLabel.textContent = t(state.phase);
+      phaseLabel.hidden = false;
+      clock.hidden = false;
+      clock.replaceChildren(
+        ...Array.from({ length: state.totalUnits }, (_, index) => {
+          const pip = document.createElement("span");
+          pip.className = index < state.elapsedUnits ? "pip used" : "pip";
+          return pip;
+        }),
+      );
+      remainingLabel.textContent = `${state.remainingUnits} / ${state.totalUnits} ${t("remaining")}`;
+      return;
+    }
+    dayLabel.textContent = t("turnLabel", { n: state.turn });
+    phaseLabel.hidden = true;
+    clock.hidden = true;
+    clock.replaceChildren();
+    remainingLabel.textContent = "";
   }
 
   function addBlock(className) {
@@ -165,6 +192,7 @@
     body.className = "narration";
     renderParagraphs(body, text);
     article.appendChild(body);
+    log.appendChild(article);
   }
 
   function addAction(type, text) {
@@ -179,13 +207,11 @@
   }
 
   function addNarration(text) {
-    const article = document.createElement("article");
-    article.className = "entry";
+    const article = addBlock("turn");
     const body = document.createElement("div");
     body.className = "narration";
     renderParagraphs(body, text);
     article.appendChild(body);
-    log.appendChild(article);
   }
 
   function addDivider(text) {
@@ -256,9 +282,9 @@
     try {
       const data = await request("/api/session", { language });
       sessionId = data.sessionId;
+      caseInfo = data.case;
       state = data.playerState;
       addOpening(data.opening.text);
-      renderStatus();
       paintChrome();
     } catch (error) {
       setMessage(error.key || null, error.message || t("error"));
@@ -291,14 +317,14 @@
     pending.appendChild(pendingBody);
 
     try {
-      const data = await request("/api/turn", {
-        sessionId,
-        type: chosenType,
-        text,
-      });
+      const data = await request("/api/turn", { sessionId, type: chosenType, text });
       pending.remove();
-      if ((data.events || []).includes("day_reset")) {
+      const events = data.events || [];
+      if (events.includes("day_reset")) {
         addDivider(t("newMorning"));
+      }
+      if (events.includes("day_closed")) {
+        addDivider(t("dayClosed"));
       }
       addNarration(data.narration);
       state = data.playerState;
@@ -357,6 +383,8 @@
     paintChrome();
     if (hasTurns) {
       restartButton.click();
+    } else if (!sessionId) {
+      start();
     }
   });
 

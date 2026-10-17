@@ -112,3 +112,24 @@ fox remembers the previous loops.
 - Do not render injury, drowning, or despair as spectacle, and never as comedy.
 - Do not use fable-style moralizing, meta-commentary, or a closing explanation
   of the theme.
+
+## Mechanics declared for this case
+
+These are the numbers the runtime keeps and the Storyteller may move.
+
+- **Clock.** A day holds six units. Every ruling prices the action in units (0–3)
+  by how much of the day it consumes. When the six units are spent, night falls
+  and the loop begins the same morning again.
+- **Meter `trust`** (range −3 to 6, starts at 0). How far the crow trusts the fox.
+  It rises with verifiable, non-manipulative action and falls with flattery,
+  pressure, taking, or being caught in a lie.
+- **Meter `insight`** (range 0 to 6, starts at 0). How much the fox understands
+  the loop and the crow's situation. It rises only from observation, evidence, or
+  a failure that teaches something.
+- **Reset.** A new morning returns `trust` to 0 because the crow keeps no memory;
+  `insight` and the established facts stay with the fox.
+- **Ending.** Set `ending` to `end` only when the fox has stopped treating the
+  crow as a tool or as the key to escape, has told the truth about the loop
+  without asking for anything in return, and the crow — on verifiable grounds —
+  has chosen to trust and respond. Cheese, the necklace, death, and leaving the
+  forest alone never end it.

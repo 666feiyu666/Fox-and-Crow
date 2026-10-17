@@ -39,5 +39,41 @@
       "alternatives must differ in strategy rather than wording alone",
       "themes and educational implications must be proposed as supported interpretations"
     ]
+  },
+  "storyteller": {
+    "title": {
+      "en": "The Fox and the Crow: A Day in Loop",
+      "zh": "狐狸与乌鸦：循环中的一天"
+    },
+    "player_character": {
+      "en": "the fox",
+      "zh": "狐狸"
+    },
+    "clock": {
+      "units_per_day": 6,
+      "loops": true,
+      "reset_meters_on_loop": [
+        "trust"
+      ]
+    },
+    "meters": {
+      "trust": {
+        "start": 0,
+        "min": -3,
+        "max": 6
+      },
+      "insight": {
+        "start": 0,
+        "min": 0,
+        "max": 6
+      }
+    },
+    "ending": {
+      "min_turns": 8,
+      "requires": {
+        "trust": 3,
+        "insight": 3
+      }
+    }
   }
 }

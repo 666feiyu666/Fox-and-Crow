@@ -1,0 +1,71 @@
+{
+  "schema_version": "counterfactual-case/v1",
+  "case_id": "cinderella-beyond-the-slipper",
+  "title": "Cinderella: alternatives to being recognised by a slipper",
+  "source": {
+    "work": "Cinderella",
+    "tradition": "European folktale; the Perrault version supplies the glass slipper, the godmother, and the midnight limit",
+    "provenance": "Structural summary of the traditional tale; no modern translation is reproduced.",
+    "rights_status": "public_domain",
+    "rights_notes": "The underlying tale and Perrault's version are public domain. Specific modern translations, illustrations, and adaptations require separate rights review."
+  },
+  "target_audience": {
+    "status": "to_be_confirmed",
+    "description": "Children's literature adaptation; the precise age range has not yet been confirmed."
+  },
+  "canonical_action": {
+    "actor": "Cinderella",
+    "goal": "leave servitude and be seen as herself",
+    "action": "attend the ball in her godmother's magic, dance with the prince, and flee at midnight",
+    "canonical_consequence": "the prince identifies her by the glass slipper and marries her"
+  },
+  "counterfactual_question": "What if Cinderella does not wait to be identified by a slipper, and speaks for herself instead?",
+  "invariants": [
+    "Cinderella lives in her stepmother's house and does the household's work",
+    "the stepmother and stepsisters want the household's advantage for themselves",
+    "a ball is announced at the palace",
+    "midnight ends the godmother's magic",
+    "the glass slipper is the only magical object left behind"
+  ],
+  "mutable_assumptions": [
+    "whether Cinderella goes to the ball at all",
+    "what she wants from the night",
+    "how the prince comes to know her",
+    "whether the stepmother's authority is broken, avoided, or left standing",
+    "the ending and its possible interpretation"
+  ],
+  "output_request": {
+    "action_count": null,
+    "additional_constraints": [
+      "alternatives must differ in strategy rather than wording alone",
+      "rescue must not be the only mechanism that can change her situation",
+      "themes and educational implications must be proposed as supported interpretations"
+    ]
+  },
+  "storyteller": {
+    "title": {
+      "en": "Cinderella: Beyond the Slipper",
+      "zh": "灰姑娘：玻璃鞋之外"
+    },
+    "player_character": {
+      "en": "Cinderella",
+      "zh": "灰姑娘"
+    },
+    "meters": {
+      "resolve": {
+        "start": 1,
+        "min": 0,
+        "max": 6
+      },
+      "bond": {
+        "start": 0,
+        "min": -3,
+        "max": 6
+      }
+    },
+    "ending": {
+      "min_turns": 6,
+      "requires": {}
+    }
+  }
+}

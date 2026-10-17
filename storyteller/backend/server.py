@@ -1,4 +1,4 @@
-"""HTTP entry point: one small API around the Storyteller, plus the static page."""
+"""HTTP entry point: one case, one Storyteller, plus the static page."""
 
 from __future__ import annotations
 
@@ -17,13 +17,17 @@ from urllib.parse import urlsplit
 if __package__ in {None, ""}:  # Allow `python backend/server.py` from the project root.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from backend.case import Case, CaseError
 from backend.model import ConfigurationError, ModelError, load_env_local
-from backend.session import LANGUAGES, Language, RulingError, StoryState, apply_turn, initial_state
+from backend.session import RulingError, StoryState, apply_turn, initial_state
 from backend.storyteller import Storyteller
 
 MAX_INPUT_LENGTH = 400
 MAX_REQUEST_BYTES = 8192
 API_PATHS = ("/api/session", "/api/session/reset", "/api/turn")
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+CASE_ROOT = REPOSITORY_ROOT / "cases"
+LANGUAGES = frozenset({"en", "zh"})
 
 
 class SessionNotFound(LookupError):
@@ -42,9 +46,9 @@ class SessionRegistry:
         self._states: dict[str, StoryState] = {}
         self._busy: set[str] = set()
 
-    def create(self, language: Language) -> tuple[str, StoryState]:
+    def create(self, case: Case, language: str) -> tuple[str, StoryState]:
         session_id = uuid.uuid4().hex
-        state = initial_state(language)
+        state = initial_state(case, language)
         with self._lock:
             self._states[session_id] = state
         return session_id, state
@@ -70,6 +74,17 @@ class SessionRegistry:
             self._busy.discard(session_id)
 
 
+def resolve_case(name_or_path: str) -> Case:
+    """Load a case by directory name under cases/, or by an explicit path."""
+    candidate = Path(name_or_path)
+    if not candidate.is_dir():
+        candidate = CASE_ROOT / name_or_path
+    if not candidate.is_dir():
+        available = ", ".join(sorted(path.name for path in CASE_ROOT.iterdir() if path.is_dir()))
+        raise CaseError(f"Unknown case: {name_or_path}. Available cases: {available}.")
+    return Case.load(candidate)
+
+
 class StoryRequestHandler(SimpleHTTPRequestHandler):
     def __init__(
         self,
@@ -83,9 +98,13 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self.sessions = sessions
         super().__init__(*args, directory=directory, **kwargs)
 
+    @property
+    def case(self) -> Case:
+        return self.storyteller.case
+
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         if urlsplit(self.path).path == "/health":
-            self._send_json(200, {"status": "ok"})
+            self._send_json(200, {"status": "ok", "case": self.case.id})
             return
         super().do_GET()
 
@@ -144,13 +163,18 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         if language not in LANGUAGES:
             self._send_json(400, {"error": "language must be en or zh."})
             return
-        session_id, state = self.sessions.create(language)
+        session_id, state = self.sessions.create(self.case, language)
         self._send_json(
             201,
             {
                 "sessionId": session_id,
-                "opening": self.storyteller.opening(language),
-                "playerState": state.to_wire(),
+                "case": {
+                    "id": self.case.id,
+                    "title": dict(self.case.titles),
+                    "playerCharacter": self.case.character_name(language),
+                },
+                "opening": {"text": self.case.opening(language)},
+                "playerState": state.to_wire(self.case),
             },
         )
 
@@ -202,10 +226,11 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(409, {"error": "This story has ended. Start a new one."})
             return
 
-        after: StoryState | None = None
         try:
             ruling, narration = self.storyteller.resolve(before, input_type, text.strip())
-            after, events = apply_turn(before, input_type, text.strip(), ruling, narration)
+            after, events = apply_turn(
+                before, self.case, input_type, text.strip(), ruling, narration
+            )
         except ConfigurationError:
             self.sessions.release(session_id)
             self._send_json(
@@ -235,7 +260,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                 "hints": list(narration.hints),
                 "outcome": ruling.outcome,
                 "events": list(events),
-                "playerState": after.to_wire(),
+                "playerState": after.to_wire(self.case),
             },
         )
 
@@ -280,22 +305,29 @@ def create_server(
     web_dir: Path | None = None,
     storyteller: Storyteller | None = None,
     sessions: SessionRegistry | None = None,
+    case: Case | None = None,
 ) -> ThreadingHTTPServer:
     project_root = Path(__file__).resolve().parents[1]
     static_dir = (web_dir or project_root / "web").resolve()
     if not (static_dir / "index.html").is_file():
         raise FileNotFoundError(f"Playable page not found: {static_dir / 'index.html'}")
+    storyteller = storyteller or Storyteller(case or resolve_case("fox-and-crow"))
     handler = partial(
         StoryRequestHandler,
         directory=str(static_dir),
-        storyteller=storyteller or Storyteller(),
+        storyteller=storyteller,
         sessions=sessions or SessionRegistry(),
     )
     return ThreadingHTTPServer((host, port), handler)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve the Fox-and-Crow playable story.")
+    parser = argparse.ArgumentParser(description="Serve a case as a playable story.")
+    parser.add_argument(
+        "--case",
+        default=os.getenv("STORYTELLER_CASE", "fox-and-crow"),
+        help="Case directory name under cases/, or a path to one.",
+    )
     default_host = "0.0.0.0" if os.getenv("RENDER") else "127.0.0.1"
     parser.add_argument("--host", default=default_host)
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
@@ -303,13 +335,20 @@ def main() -> None:
 
     project_root = Path(__file__).resolve().parents[1]
     env_loaded = load_env_local(project_root / ".env.local")
-    storyteller = Storyteller()
+    try:
+        case = resolve_case(args.case)
+    except CaseError as error:
+        print(f"Cannot start: {error}")
+        raise SystemExit(2) from error
+
+    storyteller = Storyteller(case)
     server = create_server(
         host=args.host,
         port=args.port,
         storyteller=storyteller,
     )
     print(f"Playable story: http://{args.host}:{args.port}")
+    print(f"Case: {case.id} ({case.title('en')})")
     print(f"Storyteller model: {storyteller.model.model}")
     if env_loaded:
         print("Loaded local configuration from .env.local.")

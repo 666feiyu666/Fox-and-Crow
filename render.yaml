@@ -3,7 +3,7 @@ services:
     name: fox-and-crow-story-api
     runtime: python
     plan: free
-    rootDir: app/fox-and-crow-mvp
+    rootDir: storyteller
     buildCommand: python -m compileall backend
     startCommand: python backend/server.py
     healthCheckPath: /health
@@ -14,3 +14,5 @@ services:
         value: https://api.deepseek.com
       - key: DEEPSEEK_MODEL
         value: deepseek-v4-pro
+      - key: STORYTELLER_CASE
+        value: fox-and-crow

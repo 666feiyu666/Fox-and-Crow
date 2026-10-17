@@ -1,37 +1,23 @@
 """Authoritative story state and the rules that apply a Storyteller ruling.
 
 The model decides consequences; this module decides what those consequences are
-allowed to do to the session. Every state change passes through ``apply_turn``,
-so a session can be replayed and tested without a model.
+allowed to do to the session. Clock, meters, and the ending condition all come
+from the case, so the same rules drive every story.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Mapping
 
-InputType = Literal["say", "do"]
-Language = Literal["en", "zh"]
-OUTCOMES = frozenset({"success", "partial", "failure", "blocked"})
-ENDINGS = frozenset({"none", "loop_broken"})
-LANGUAGES = frozenset({"en", "zh"})
+from backend.case import MAX_TIME_COST, Case, Meter
 
-DAY_UNITS = 6
-MAX_TIME_COST = 3
+InputType = Literal["say", "do"]
+OUTCOMES = frozenset({"success", "partial", "failure", "blocked"})
+ENDINGS = frozenset({"none", "end"})
+
 MEMORY_TURNS = 8
 MAX_FACTS = 40
-
-TRUST_MIN, TRUST_MAX = -3, 6
-INSIGHT_MIN, INSIGHT_MAX = 0, 6
-
-# The Storyteller declares the ending; these thresholds are the floor it must
-# have earned first. They are deliberately low: they stop a single turn from
-# skipping the story, not the Storyteller's judgement.
-LOOP_BREAK_MIN_TURNS = 8
-LOOP_BREAK_MIN_INSIGHT = 3
-LOOP_BREAK_MIN_TRUST = 3
-
-PHASES = ("morning", "morning", "afternoon", "afternoon", "evening", "evening")
 
 
 class RulingError(ValueError):
@@ -69,14 +55,13 @@ class Ruling:
 
     outcome: str
     time_cost: int
-    trust: int
-    insight: int
+    meters: Mapping[str, int]
     facts: tuple[str, ...]
     scene: str
     ending: str
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "Ruling":
+    def from_dict(cls, payload: Mapping[str, Any], case: Case) -> "Ruling":
         if not isinstance(payload, Mapping):
             raise RulingError("Ruling must be a JSON object.")
         outcome = payload.get("outcome")
@@ -85,11 +70,24 @@ class Ruling:
         ending = payload.get("ending", "none")
         if ending not in ENDINGS:
             raise RulingError(f"Unknown ending: {ending!r}.")
+
+        time_cost = _int(payload.get("time_cost", 0), "time_cost", 0, MAX_TIME_COST)
+        if case.clock is None:
+            time_cost = 0
+
+        raw_meters = payload.get("meters", {})
+        if not isinstance(raw_meters, Mapping):
+            raise RulingError("meters must be an object of meter names to integers.")
+        meters: dict[str, int] = {}
+        for meter_id, delta in raw_meters.items():
+            if case.meter(str(meter_id)) is None:
+                continue  # A meter this story does not keep is ignored, not invented.
+            meters[str(meter_id)] = _int(delta, f"meters.{meter_id}", -2, 2)
+
         return cls(
             outcome=str(outcome),
-            time_cost=_int(payload.get("time_cost"), "time_cost", 0, MAX_TIME_COST),
-            trust=_int(payload.get("trust"), "trust", -2, 2),
-            insight=_int(payload.get("insight"), "insight", -1, 2),
+            time_cost=time_cost,
+            meters=meters,
             facts=_texts(payload.get("facts", []), "facts", limit=200, count=5),
             scene=_text(payload.get("scene"), "scene", limit=800),
             ending=str(ending),
@@ -99,8 +97,7 @@ class Ruling:
         return {
             "outcome": self.outcome,
             "time_cost": self.time_cost,
-            "trust": self.trust,
-            "insight": self.insight,
+            "meters": dict(self.meters),
             "facts": list(self.facts),
             "scene": self.scene,
             "ending": self.ending,
@@ -127,7 +124,7 @@ class Narration:
 @dataclass(frozen=True)
 class Turn:
     number: int
-    loop: int
+    day: int
     input_type: InputType
     player_input: str
     narration: str
@@ -145,49 +142,72 @@ class Turn:
 
 @dataclass(frozen=True)
 class StoryState:
-    language: Language = "en"
-    loop: int = 1
+    language: str = "en"
+    turn: int = 0
+    day: int = 1
     elapsed: int = 0
-    trust: int = 0
-    insight: int = 0
+    meters: Mapping[str, int] = field(default_factory=dict)
     facts: tuple[str, ...] = ()
     turns: tuple[Turn, ...] = ()
     ending: str | None = None
 
     @property
-    def phase(self) -> str:
-        return PHASES[min(self.elapsed, DAY_UNITS - 1)]
-
-    @property
-    def remaining(self) -> int:
-        return max(DAY_UNITS - self.elapsed, 0)
-
-    @property
     def ended(self) -> bool:
         return self.ending is not None
 
-    def to_wire(self) -> dict[str, Any]:
-        return {
+    def phase(self, case: Case) -> str:
+        if case.clock is None:
+            return ""
+        share = self.elapsed / case.clock.units_per_day
+        if share < 1 / 3:
+            return "morning"
+        if share < 2 / 3:
+            return "afternoon"
+        return "evening"
+
+    def remaining(self, case: Case) -> int:
+        if case.clock is None:
+            return 0
+        return max(case.clock.units_per_day - self.elapsed, 0)
+
+    def to_wire(self, case: Case) -> dict[str, Any]:
+        wire: dict[str, Any] = {
             "language": self.language,
-            "loop": self.loop,
-            "elapsedUnits": self.elapsed,
-            "remainingUnits": self.remaining,
-            "totalUnits": DAY_UNITS,
-            "phase": self.phase,
+            "turn": self.turn,
+            "day": self.day,
+            "hasClock": case.clock is not None,
             "ended": self.ended,
         }
+        if case.clock is not None:
+            wire.update(
+                {
+                    "elapsedUnits": self.elapsed,
+                    "remainingUnits": self.remaining(case),
+                    "totalUnits": case.clock.units_per_day,
+                    "phase": self.phase(case),
+                    "loops": case.clock.loops,
+                }
+            )
+        return wire
 
-    def to_agent_context(self, input_type: InputType, text: str) -> dict[str, Any]:
+    def to_agent_context(self, case: Case, input_type: InputType, text: str) -> dict[str, Any]:
+        clock = None
+        if case.clock is not None:
+            clock = {
+                "totalUnits": case.clock.units_per_day,
+                "remainingUnits": self.remaining(case),
+                "phase": self.phase(case),
+                "loops": case.clock.loops,
+            }
         return {
+            "case": {"id": case.id, "player_character": case.character_name("en")},
             "state": {
                 "language": self.language,
-                "loop": self.loop,
-                "elapsedUnits": self.elapsed,
-                "remainingUnits": self.remaining,
-                "phase": self.phase,
-                "crowTrust": self.trust,
-                "foxInsight": self.insight,
-                "loopBroken": self.ended,
+                "turn": self.turn,
+                "day": self.day,
+                "clock": clock,
+                "meters": dict(self.meters),
+                "ended": self.ended,
             },
             "established_facts": list(self.facts),
             "recent_turns": [turn.to_dict() for turn in self.turns],
@@ -195,19 +215,18 @@ class StoryState:
         }
 
 
-def initial_state(language: Language = "en") -> StoryState:
-    if language not in LANGUAGES:
-        raise ValueError(f"Unsupported language: {language!r}.")
-    return StoryState(language=language)
-
-
-def loop_break_allowed(turn_count: int, insight: int, trust: int) -> bool:
-    """Whether the turn now being resolved has earned the ending it claims."""
-    return (
-        turn_count >= LOOP_BREAK_MIN_TURNS
-        and insight >= LOOP_BREAK_MIN_INSIGHT
-        and trust >= LOOP_BREAK_MIN_TRUST
+def initial_state(case: Case, language: str = "en") -> StoryState:
+    return StoryState(
+        language=language,
+        meters={meter.id: meter.start for meter in case.meters},
     )
+
+
+def ending_allowed(case: Case, turn_count: int, meters: Mapping[str, int]) -> bool:
+    """Whether the turn now being resolved has earned the ending it claims."""
+    if turn_count < case.ending.min_turns:
+        return False
+    return all(meters.get(meter_id, 0) >= threshold for meter_id, threshold in case.ending.requires.items())
 
 
 def _merge_facts(known: tuple[str, ...], new: tuple[str, ...]) -> tuple[str, ...]:
@@ -218,8 +237,35 @@ def _merge_facts(known: tuple[str, ...], new: tuple[str, ...]) -> tuple[str, ...
     return tuple(merged[-MAX_FACTS:])
 
 
+def _apply_meters(
+    case: Case,
+    current: Mapping[str, int],
+    deltas: Mapping[str, int],
+) -> dict[str, int]:
+    updated = dict(current)
+    for meter in case.meters:
+        updated[meter.id] = _clamp(
+            current.get(meter.id, meter.start) + deltas.get(meter.id, 0),
+            meter.minimum,
+            meter.maximum,
+        )
+    return updated
+
+
+def _reset_meters(case: Case, meters: Mapping[str, int]) -> dict[str, int]:
+    if case.clock is None:
+        return dict(meters)
+    reset = {}
+    for meter in case.meters:
+        reset[meter.id] = meter.start if meter.id in case.clock.reset_on_loop else meters.get(
+            meter.id, meter.start
+        )
+    return reset
+
+
 def apply_turn(
     state: StoryState,
+    case: Case,
     input_type: InputType,
     player_input: str,
     ruling: Ruling,
@@ -232,14 +278,13 @@ def apply_turn(
         raise ValueError(f"Unsupported input type: {input_type!r}.")
 
     events: list[str] = []
-    trust = _clamp(state.trust + ruling.trust, TRUST_MIN, TRUST_MAX)
-    insight = _clamp(state.insight + ruling.insight, INSIGHT_MIN, INSIGHT_MAX)
+    meters = _apply_meters(case, state.meters, ruling.meters)
     facts = _merge_facts(state.facts, ruling.facts)
     turns = (
         *state.turns,
         Turn(
-            number=len(state.turns) + 1,
-            loop=state.loop,
+            number=state.turn + 1,
+            day=state.day,
             input_type=input_type,
             player_input=player_input,
             narration=narration.text,
@@ -249,27 +294,31 @@ def apply_turn(
     )[-MEMORY_TURNS:]
 
     ending: str | None = None
-    if ruling.ending == "loop_broken":
-        if loop_break_allowed(len(state.turns) + 1, insight, trust):
-            ending = "loop_broken"
-            events.append("loop_broken")
+    if ruling.ending == "end":
+        if ending_allowed(case, state.turn + 1, meters):
+            ending = "end"
+            events.append("story_ended")
         else:
-            events.append("loop_break_refused")
+            events.append("ending_refused")
 
     elapsed = state.elapsed + ruling.time_cost
-    loop = state.loop
-    if ending is None and elapsed >= DAY_UNITS:
-        elapsed -= DAY_UNITS
-        loop += 1
-        trust = 0  # The crow keeps no memory of the day that just ended.
-        events.append("day_reset")
+    day = state.day
+    if ending is None and case.clock is not None and elapsed >= case.clock.units_per_day:
+        if case.clock.loops:
+            elapsed -= case.clock.units_per_day
+            day += 1
+            meters = _reset_meters(case, meters)
+            events.append("day_reset")
+        else:
+            elapsed = case.clock.units_per_day
+            events.append("day_closed")
 
     next_state = replace(
         state,
-        loop=loop,
+        turn=state.turn + 1,
+        day=day,
         elapsed=elapsed,
-        trust=trust,
-        insight=insight,
+        meters=meters,
         facts=facts,
         turns=turns,
         ending=ending,
