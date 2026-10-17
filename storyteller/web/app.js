@@ -3,6 +3,13 @@
 
   const I18N = {
     en: {
+      shelfTitle: "Playable stories",
+      shelfLede:
+        "Every story here arrives as a bare tale. Before you begin, it is read once: the role you take, the world around you and the first passage all come from the words that were already there.",
+      readThis: "Read this one",
+      back: "All stories",
+      shelfEmpty: "No stories are on the shelf yet.",
+      shelfError: "The shelf could not be opened. Try again.",
       restart: "Restart",
       languageLabel: "中文",
       switchLanguage: "Switch language",
@@ -28,10 +35,17 @@
       note: "Nothing is scripted. Every line you write is answered by the storyteller.",
     },
     zh: {
+      shelfTitle: "讲故事的人",
+      shelfLede:
+        "这里的每个故事都只带来原文。开始之前，它会被读一次：你扮演谁、周围是怎样的世界、开场那一段，都从那几行原文里长出来。",
+      readThis: "读这一篇",
+      back: "所有故事",
+      shelfEmpty: "书架上还没有故事。",
+      shelfError: "书架没有打开，请再试一次。",
       restart: "重新开始",
       languageLabel: "English",
       switchLanguage: "切换语言",
-      youAre: "你扮演{name}",
+      youAre: "你扮演 {name}",
       loopCount: "第 {n} 次",
       turnCount: "第 {n} 轮",
       again: "又一次开始",
@@ -53,6 +67,15 @@
     },
   };
 
+  const STORY_ROUTE = /^#\/story\/([^/]+)$/;
+
+  const shelfView = document.getElementById("shelf-view");
+  const shelfTitle = document.getElementById("shelf-title");
+  const shelfLede = document.getElementById("shelf-lede");
+  const shelfList = document.getElementById("shelf-list");
+  const shelfMessage = document.getElementById("shelf-message");
+  const shelfLanguage = document.getElementById("shelf-language");
+  const storyView = document.getElementById("story-view");
   const log = document.getElementById("log");
   const actionBox = document.getElementById("action");
   const sendButton = document.getElementById("send");
@@ -62,6 +85,7 @@
   const turnLabel = document.getElementById("turn-label");
   const restartButton = document.getElementById("restart");
   const languageButton = document.getElementById("language");
+  const backButton = document.getElementById("back");
   const note = document.getElementById("note");
   const storyTitle = document.getElementById("story-title");
   const inputLabel = document.getElementById("input-label");
@@ -77,6 +101,7 @@
   let loop = 1;
   let turn = 0;
   let ended = false;
+  let shelfEntries = null;
   const derivedLanguages = new Set();
   const UNDERSTANDING_SLOW_MS = 2500;
 
@@ -130,6 +155,7 @@
     restartButton.textContent = t("restart");
     languageButton.textContent = t("languageLabel");
     languageButton.setAttribute("aria-label", t("switchLanguage"));
+    backButton.textContent = t("back");
     actionBox.placeholder = fromTable(mode === "say" ? "placeholderSay" : "placeholderDo");
     sendButton.textContent = t("send");
     inputLabel.textContent = t("inputLabel");
@@ -143,6 +169,14 @@
     if (messageKey) {
       message.textContent = t(messageKey);
     }
+  }
+
+  function paintShelf() {
+    shelfTitle.textContent = t("shelfTitle");
+    shelfLede.textContent = t("shelfLede");
+    shelfLanguage.textContent = t("languageLabel");
+    shelfLanguage.setAttribute("aria-label", t("switchLanguage"));
+    shelfList.setAttribute("aria-label", t("shelfTitle"));
   }
 
   function addEntry(className) {
@@ -234,13 +268,17 @@
   }
 
   async function request(path, body) {
+    const init =
+      body === undefined
+        ? { method: "GET" }
+        : {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          };
     let response;
     try {
-      response = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      response = await fetch(path, init);
     } catch (error) {
       const failure = new Error(t("error"));
       failure.key = "error";
@@ -258,7 +296,89 @@
     return data;
   }
 
-  async function start() {
+  function storyCaseId() {
+    const match = STORY_ROUTE.exec(window.location.hash);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  function discardSession() {
+    const stale = sessionId;
+    sessionId = null;
+    if (!stale) {
+      return;
+    }
+    fetch("/api/session/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: stale }),
+    }).catch(() => {});
+  }
+
+  function shelfItem(entry) {
+    const item = document.createElement("li");
+    item.className = "story-item";
+    const link = document.createElement("a");
+    link.className = "story-link";
+    link.href = `#/story/${encodeURIComponent(entry.id)}`;
+    const name = document.createElement("h2");
+    name.className = "story-name";
+    name.textContent = caseText(entry.title);
+    const quote = document.createElement("p");
+    quote.className = "story-quote";
+    quote.textContent = `“${caseText(entry.excerpt)}”`;
+    const open = document.createElement("span");
+    open.className = "story-open";
+    open.textContent = t("readThis");
+    link.append(name, quote, open);
+    item.appendChild(link);
+    return item;
+  }
+
+  async function renderShelf() {
+    paintShelf();
+    shelfMessage.textContent = "";
+    if (shelfEntries === null) {
+      try {
+        const data = await request("/api/cases");
+        shelfEntries = data.cases || [];
+      } catch (error) {
+        shelfEntries = null;
+        shelfMessage.textContent = t("shelfError");
+        return;
+      }
+    }
+    shelfList.replaceChildren(...shelfEntries.map(shelfItem));
+    if (!shelfEntries.length) {
+      shelfMessage.textContent = t("shelfEmpty");
+    }
+  }
+
+  function showShelf() {
+    discardSession();
+    sessionId = null;
+    caseInfo = null;
+    storyView.hidden = true;
+    shelfView.hidden = false;
+    document.title = t("shelfTitle");
+    renderShelf();
+  }
+
+  function showStory(caseId) {
+    shelfView.hidden = true;
+    storyView.hidden = false;
+    start(caseId);
+  }
+
+  function route() {
+    const caseId = storyCaseId();
+    if (caseId) {
+      showStory(caseId);
+    } else {
+      showShelf();
+    }
+  }
+
+  async function start(caseId) {
     const requested = language;
     log.replaceChildren();
     hints.replaceChildren();
@@ -272,14 +392,14 @@
         }, UNDERSTANDING_SLOW_MS)
       : null;
     try {
-      const data = await request("/api/session", { language: requested });
+      const data = await request("/api/session", { language: requested, case: caseId });
       sessionId = data.sessionId;
       caseInfo = data.case;
       loop = data.playerState.loop;
       turn = data.playerState.turn;
       ended = data.playerState.ended;
       if (data.understandingSource === "derived") {
-        derivedLanguages.add(requested);
+        derivedLanguages.add(`${caseId}/${requested}`);
       }
       addOpening(data.opening);
       paintChrome();
@@ -347,6 +467,19 @@
     actionBox.focus();
   }
 
+  function switchLanguage() {
+    language = language === "en" ? "zh" : "en";
+    paintChrome();
+    paintShelf();
+    const caseId = storyCaseId();
+    if (caseId) {
+      discardSession();
+      start(caseId);
+    } else {
+      renderShelf();
+    }
+  }
+
   modeButtons.forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode));
   });
@@ -361,24 +494,23 @@
   });
 
   restartButton.addEventListener("click", () => {
-    if (sessionId) {
-      const stale = sessionId;
-      sessionId = null;
-      fetch("/api/session/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: stale }),
-      }).catch(() => {});
+    const caseId = storyCaseId();
+    if (!caseId) {
+      return;
     }
-    start();
+    discardSession();
+    start(caseId);
   });
 
-  languageButton.addEventListener("click", () => {
-    language = language === "en" ? "zh" : "en";
-    paintChrome();
-    restartButton.click();
+  backButton.addEventListener("click", () => {
+    window.location.hash = "#/";
   });
+
+  languageButton.addEventListener("click", switchLanguage);
+  shelfLanguage.addEventListener("click", switchLanguage);
+  window.addEventListener("hashchange", route);
 
   paintChrome();
-  start();
+  paintShelf();
+  route();
 })();

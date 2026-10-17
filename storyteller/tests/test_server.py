@@ -220,7 +220,7 @@ class ModelFailureTests(ServerTestBase):
 class UncommittedTurnTests(ServerTestBase):
     def test_failed_writer_leaves_state_and_audit_untouched_and_can_retry(self):
         session_id = self.new_session()["sessionId"]
-        before = self.sessions.claim(session_id)
+        _, before = self.sessions.claim(session_id)
         self.sessions.release(session_id)
         original = self.model.complete_json
 
@@ -232,7 +232,7 @@ class UncommittedTurnTests(ServerTestBase):
         self.model.complete_json = invalid_writer
         status, _ = self.take_turn(session_id)
         self.assertEqual(status, 502)
-        after = self.sessions.claim(session_id)
+        _, after = self.sessions.claim(session_id)
         self.sessions.release(session_id)
         self.assertEqual(before, after)
         self.assertFalse(after.turns)
@@ -243,7 +243,7 @@ class UncommittedTurnTests(ServerTestBase):
     def test_session_initialises_hidden_world_without_exposing_it(self):
         session = self.new_session()
         self.assertNotIn("hidden-password", str(session))
-        state = self.sessions.claim(session["sessionId"])
+        _, state = self.sessions.claim(session["sessionId"])
         self.sessions.release(session["sessionId"])
         self.assertIn("hidden-password", str(state.facts))
 

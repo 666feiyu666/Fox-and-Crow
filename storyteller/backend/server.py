@@ -1,10 +1,11 @@
-"""HTTP entry point: one case, one Storyteller, plus the static page."""
+"""HTTP entry point: the case shelf, one Storyteller per case, plus the pages."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 import threading
 import uuid
@@ -18,7 +19,7 @@ if __package__ in {None, ""}:  # Allow `python backend/server.py` from the proje
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.case import LANGUAGES, Case, CaseError
-from backend.model import ConfigurationError, ModelError, load_env_local
+from backend.model import ConfigurationError, ChatModel, ModelError, load_env_local
 from backend.session import RulingError, StoryState, apply_turn, initial_state
 from backend.storyteller import Storyteller
 from backend.understanding import Understanding
@@ -28,6 +29,18 @@ MAX_REQUEST_BYTES = 8192
 API_PATHS = ("/api/session", "/api/session/reset", "/api/turn")
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CASE_ROOT = REPOSITORY_ROOT / "cases"
+SENTENCE_END = re.compile(r"[。！？]|[.!?](?=\s|$)")
+EXCERPT_LIMIT = 180
+
+
+def first_sentence(text: str) -> str:
+    """The line a shelf shows: the tale's own opening words, not a summary."""
+    flat = " ".join(text.split())
+    match = SENTENCE_END.search(flat)
+    excerpt = flat[: match.end()] if match else flat
+    if len(excerpt) > EXCERPT_LIMIT:
+        excerpt = excerpt[: EXCERPT_LIMIT - 1].rstrip() + "…"
+    return excerpt
 
 
 class SessionNotFound(LookupError):
@@ -39,23 +52,26 @@ class SessionBusy(RuntimeError):
 
 
 class SessionRegistry:
-    """Process-local sessions, one in-flight turn per session."""
+    """Process-local sessions, one in-flight turn per session, each bound to a case."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._states: dict[str, StoryState] = {}
+        self._states: dict[str, tuple[str, StoryState]] = {}
         self._busy: set[str] = set()
 
     def create(
-        self, language: str, understanding: Understanding | None = None,
+        self,
+        case_id: str,
+        language: str,
+        understanding: Understanding | None = None,
     ) -> tuple[str, StoryState]:
         session_id = uuid.uuid4().hex
         state = initial_state(language, understanding)
         with self._lock:
-            self._states[session_id] = state
+            self._states[session_id] = (case_id, state)
         return session_id, state
 
-    def claim(self, session_id: str) -> StoryState:
+    def claim(self, session_id: str) -> tuple[str, StoryState]:
         with self._lock:
             if session_id not in self._states:
                 raise SessionNotFound(session_id)
@@ -68,12 +84,77 @@ class SessionRegistry:
         with self._lock:
             self._busy.discard(session_id)
             if state is not None and session_id in self._states:
-                self._states[session_id] = state
+                case_id, _ = self._states[session_id]
+                self._states[session_id] = (case_id, state)
 
     def discard(self, session_id: str) -> None:
         with self._lock:
             self._states.pop(session_id, None)
             self._busy.discard(session_id)
+
+
+class CaseLibrary:
+    """Every case on the shelf, each with one Storyteller reused across sessions."""
+
+    def __init__(
+        self,
+        case_root: Path | None = None,
+        model: ChatModel | None = None,
+        only: str | None = None,
+    ) -> None:
+        self.case_root = Path(case_root or CASE_ROOT)
+        self.model = model
+        self.only = only
+        self._lock = threading.Lock()
+        self._cases: dict[str, Case] | None = None
+        self._storytellers: dict[str, Storyteller] = {}
+
+    @classmethod
+    def of(cls, storyteller: Storyteller) -> "CaseLibrary":
+        """A shelf holding one already-built Storyteller, as the tests use."""
+        library = cls(case_root=storyteller.case.directory.parent, only=storyteller.case.id)
+        library._cases = {storyteller.case.id: storyteller.case}
+        library._storytellers[storyteller.case.id] = storyteller
+        return library
+
+    def _load(self) -> dict[str, Case]:
+        if self._cases is None:
+            loaded: dict[str, Case] = {}
+            for directory in sorted(self.case_root.iterdir()):
+                if not directory.is_dir() or directory.name.startswith((".", "_")):
+                    continue
+                try:
+                    case = Case.load(directory)
+                except CaseError:
+                    continue
+                if self.only is None or case.id == self.only:
+                    loaded[case.id] = case
+            self._cases = loaded
+        return self._cases
+
+    def entries(self) -> list[Case]:
+        with self._lock:
+            return list(self._load().values())
+
+    def default_case(self) -> Case:
+        cases = self.entries()
+        if not cases:
+            raise CaseError(f"No playable cases in {self.case_root}.")
+        return cases[0]
+
+    def storyteller(self, case_id: str | None = None) -> Storyteller:
+        case = self.default_case() if case_id is None else self._find(case_id)
+        with self._lock:
+            if case.id not in self._storytellers:
+                self._storytellers[case.id] = Storyteller(case, model=self.model)
+            return self._storytellers[case.id]
+
+    def _find(self, case_id: str) -> Case:
+        case = self._load().get(case_id)
+        if case is None:
+            available = ", ".join(sorted(self._load())) or "none"
+            raise CaseError(f"Unknown case: {case_id}. Available cases: {available}.")
+        return case
 
 
 def resolve_case(name_or_path: str) -> Case:
@@ -92,23 +173,36 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         self,
         *args: Any,
         directory: str,
-        storyteller: Storyteller,
+        library: CaseLibrary,
         sessions: SessionRegistry,
         **kwargs: Any,
     ) -> None:
-        self.storyteller = storyteller
+        self.library = library
         self.sessions = sessions
         super().__init__(*args, directory=directory, **kwargs)
 
-    @property
-    def case(self) -> Case:
-        return self.storyteller.case
-
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
-        if urlsplit(self.path).path == "/health":
-            self._send_json(200, {"status": "ok", "case": self.case.id})
+        path = urlsplit(self.path).path
+        if path == "/health":
+            try:
+                case = self.library.default_case()
+            except CaseError as error:
+                self._send_json(503, {"status": "empty", "error": str(error)})
+                return
+            self._send_json(200, {"status": "ok", "case": case.id})
+            return
+        if path == "/api/cases":
+            self._send_json(200, {"cases": [self._case_summary(case) for case in self.library.entries()]})
             return
         super().do_GET()
+
+    @staticmethod
+    def _case_summary(case: Case) -> dict[str, Any]:
+        return {
+            "id": case.id,
+            "title": dict(case.titles),
+            "excerpt": {language: first_sentence(case.source(language)) for language in LANGUAGES},
+        }
 
     def do_OPTIONS(self) -> None:  # noqa: N802 - stdlib naming
         if urlsplit(self.path).path not in API_PATHS:
@@ -158,15 +252,24 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         return payload
 
     def _create_session(self, payload: dict[str, Any]) -> None:
-        if set(payload) - {"language"}:
-            self._send_json(400, {"error": "Session JSON may contain only language."})
+        if set(payload) - {"language", "case"}:
+            self._send_json(400, {"error": "Session JSON may contain only language and case."})
             return
         language = payload.get("language", "en")
         if language not in LANGUAGES:
             self._send_json(400, {"error": "language must be en or zh."})
             return
+        case_id = payload.get("case")
+        if case_id is not None and not isinstance(case_id, str):
+            self._send_json(400, {"error": "case must be a case id."})
+            return
         try:
-            understanding, understanding_source = self.storyteller.understanding_with_source(
+            storyteller = self.library.storyteller(case_id)
+        except CaseError as error:
+            self._send_json(404, {"error": str(error)})
+            return
+        try:
+            understanding, understanding_source = storyteller.understanding_with_source(
                 language
             )
         except ConfigurationError:
@@ -184,14 +287,14 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             )
             return
 
-        session_id, state = self.sessions.create(language, understanding)
+        session_id, state = self.sessions.create(storyteller.case.id, language, understanding)
         self._send_json(
             201,
             {
                 "sessionId": session_id,
                 "case": {
-                    "id": self.case.id,
-                    "title": dict(self.case.titles),
+                    "id": storyteller.case.id,
+                    "title": dict(storyteller.case.titles),
                     "player": understanding.player,
                 },
                 "opening": understanding.opening,
@@ -235,7 +338,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
 
         try:
-            before = self.sessions.claim(session_id)
+            case_id, before = self.sessions.claim(session_id)
         except SessionNotFound:
             self._send_json(404, {"error": "This story session has expired. Restart it."})
             return
@@ -249,7 +352,15 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             return
 
         try:
-            ruling, narration = self.storyteller.resolve(before, input_type, text.strip())
+            storyteller = self.library.storyteller(case_id)
+        except CaseError as error:
+            self.sessions.release(session_id)
+            self.log_error("Session points at an unavailable case: %s", error)
+            self._send_json(404, {"error": "This story is no longer on the shelf."})
+            return
+
+        try:
+            ruling, narration = storyteller.resolve(before, input_type, text.strip())
             after = apply_turn(before, input_type, text.strip(), ruling, narration)
         except ConfigurationError:
             self.sessions.release(session_id)
@@ -327,27 +438,37 @@ def create_server(
     storyteller: Storyteller | None = None,
     sessions: SessionRegistry | None = None,
     case: Case | None = None,
+    cases: CaseLibrary | None = None,
 ) -> ThreadingHTTPServer:
     project_root = Path(__file__).resolve().parents[1]
     static_dir = (web_dir or project_root / "web").resolve()
     if not (static_dir / "index.html").is_file():
         raise FileNotFoundError(f"Playable page not found: {static_dir / 'index.html'}")
-    storyteller = storyteller or Storyteller(case or resolve_case("fox-and-crow"))
+    if cases is None:
+        if storyteller is not None:
+            cases = CaseLibrary.of(storyteller)
+        elif case is not None:
+            cases = CaseLibrary.of(Storyteller(case))
+        else:
+            cases = CaseLibrary()
     handler = partial(
         StoryRequestHandler,
         directory=str(static_dir),
-        storyteller=storyteller,
+        library=cases,
         sessions=sessions or SessionRegistry(),
     )
     return ThreadingHTTPServer((host, port), handler)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Serve a case as a playable story.")
+    parser = argparse.ArgumentParser(description="Serve the case shelf as playable stories.")
     parser.add_argument(
         "--case",
-        default=os.getenv("STORYTELLER_CASE", "fox-and-crow"),
-        help="Case directory name under cases/, or a path to one.",
+        default=os.getenv("STORYTELLER_CASE") or None,
+        help=(
+            "Serve only this case (a directory name under cases/, or a path to one). "
+            "Omit it to put every case on the shelf."
+        ),
     )
     default_host = "0.0.0.0" if os.getenv("RENDER") else "127.0.0.1"
     parser.add_argument("--host", default=default_host)
@@ -357,23 +478,25 @@ def main() -> None:
     project_root = Path(__file__).resolve().parents[1]
     env_loaded = load_env_local(project_root / ".env.local")
     try:
-        case = resolve_case(args.case)
+        library = (
+            CaseLibrary.of(Storyteller(resolve_case(args.case)))
+            if args.case
+            else CaseLibrary()
+        )
+        shelf = library.entries()
+        if not shelf:
+            raise CaseError(f"No playable cases in {library.case_root}.")
     except CaseError as error:
         print(f"Cannot start: {error}")
         raise SystemExit(2) from error
 
-    storyteller = Storyteller(case)
-    server = create_server(
-        host=args.host,
-        port=args.port,
-        storyteller=storyteller,
-    )
-    print(f"Playable story: http://{args.host}:{args.port}")
-    print(f"Case: {case.id} ({case.title('en')})")
-    print(f"Storyteller model: {storyteller.model.model}")
+    server = create_server(host=args.host, port=args.port, cases=library)
+    print(f"Playable stories: http://{args.host}:{args.port}")
+    print(f"On the shelf: {', '.join(f'{case.id} ({case.title('en')})' for case in shelf)}")
+    print(f"Storyteller model: {library.storyteller(shelf[0].id).model.model}")
     if env_loaded:
         print("Loaded local configuration from .env.local.")
-    if not storyteller.configured:
+    if not library.storyteller(shelf[0].id).configured:
         print("DEEPSEEK_API_KEY is not set; turns will fail until it is.")
     try:
         server.serve_forever()

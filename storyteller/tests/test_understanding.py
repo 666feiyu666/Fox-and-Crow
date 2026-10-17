@@ -29,6 +29,25 @@ class UnderstandingTests(unittest.TestCase):
         with self.assertRaises(UnderstandingError):
             understanding.validate_source("another source")
 
+    def test_source_evidence_may_rejoin_a_wrapped_line(self):
+        data = payload()
+        data["space"]["anchors"] = [
+            {"fact": "The crow settled in a tree.", "quote": "settled on a high branch to eat it in peace"}
+        ]
+        understanding = Understanding.from_dict(data)
+        understanding.validate_source(
+            "A crow, having found a piece of cheese, settled on a high branch to eat it in\npeace."
+        )
+        with self.assertRaises(UnderstandingError):
+            understanding.validate_source("A crow settled on a branch and ate quietly.")
+
+    def test_source_evidence_cannot_span_two_paragraphs(self):
+        data = payload()
+        data["space"]["anchors"] = [{"fact": "Two passages.", "quote": "first line and second part"}]
+        understanding = Understanding.from_dict(data)
+        with self.assertRaises(UnderstandingError):
+            understanding.validate_source("first line\n\nsecond part")
+
     def test_space_rejects_ambiguous_or_incomplete_structure(self):
         for field, value in (("anchors", []), ("fixed_keys", ["unknown"]),
                              ("possibilities", "not an array"), ("style", "")):

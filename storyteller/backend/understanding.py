@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,18 @@ from backend.space import ContractError, Fact, array, obj, text, texts, unique
 
 CACHE_DIRNAME = ".generated"
 CACHE_VERSION = 2
+_PARAGRAPH_BREAK = re.compile(r"\n\s*\n")
+
+
+def quote_form(value: str) -> str:
+    """Text as a reader compares it: wrapped lines rarely survive quotation.
+
+    Whitespace inside a paragraph collapses to single spaces, so a quotation that
+    rejoins a hard-wrapped line still counts as the same words; a paragraph break
+    stays a break, so two separate passages cannot be spliced into one quotation.
+    """
+    paragraphs = (" ".join(block.split()) for block in _PARAGRAPH_BREAK.split(value.strip()))
+    return "\n".join(paragraphs)
 
 
 class UnderstandingError(ContractError):
@@ -92,8 +105,9 @@ class Understanding:
             raise UnderstandingError(str(error)) from error
 
     def validate_source(self, source: str) -> None:
+        tale = quote_form(source)
         for anchor in self.space.anchors:
-            if anchor.quote not in source:
+            if quote_form(anchor.quote) not in tale:
                 raise UnderstandingError("Source evidence must be an exact excerpt of this tale.")
 
     def to_dict(self) -> dict:
