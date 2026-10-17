@@ -1,8 +1,8 @@
-"""Story state: what has been said, and what the story has fixed so far.
+"""Story state: what has been said, what is fixed, and which loop we are in.
 
-There are no meters, clocks, or ending thresholds here. The storyteller decides
-what happens; this module only remembers the turns the player can see and the
-facts the storyteller has declared.
+There are no meters or clocks here. The storyteller decides what happens, whether
+a turn only repeats the story and the world comes round again (`restart`), and
+whether the loop has finally been broken (`ending`). This module only remembers.
 """
 
 from __future__ import annotations
@@ -38,6 +38,12 @@ def _texts(value: Any, label: str, *, limit: int, count: int) -> tuple[str, ...]
     return tuple(_text(item, label, limit=limit) for item in value[:count])
 
 
+def _flag(value: Any, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise RulingError(f"{label} must be true or false.")
+    return value
+
+
 @dataclass(frozen=True)
 class Ruling:
     """Phase 1 of a turn: what the storyteller decided, before any prose."""
@@ -45,6 +51,8 @@ class Ruling:
     outcome: str
     facts: tuple[str, ...]
     scene: str
+    restart: bool = False
+    ending: bool = False
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "Ruling":
@@ -53,10 +61,16 @@ class Ruling:
         outcome = payload.get("outcome")
         if outcome not in OUTCOMES:
             raise RulingError(f"Unknown outcome: {outcome!r}.")
+        restart = _flag(payload.get("restart", False), "restart")
+        ending = _flag(payload.get("ending", False), "ending")
+        if restart and ending:
+            raise RulingError("A turn cannot both restart the loop and end it.")
         return cls(
             outcome=str(outcome),
             facts=_texts(payload.get("facts", []), "facts", limit=300, count=3),
             scene=_text(payload.get("scene"), "scene", limit=1200),
+            restart=restart,
+            ending=ending,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -64,6 +78,8 @@ class Ruling:
             "outcome": self.outcome,
             "facts": list(self.facts),
             "scene": self.scene,
+            "restart": self.restart,
+            "ending": self.ending,
         }
 
 
@@ -87,12 +103,14 @@ class Narration:
 @dataclass(frozen=True)
 class Turn:
     number: int
+    loop: int
     input_type: InputType
     player_input: str
     narration: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "loop": self.loop,
             "type": self.input_type,
             "text": self.player_input,
             "narration": self.narration,
@@ -102,12 +120,19 @@ class Turn:
 @dataclass(frozen=True)
 class StoryState:
     language: str = "en"
+    loop: int = 1
     turn: int = 0
     facts: tuple[str, ...] = ()
     turns: tuple[Turn, ...] = field(default_factory=tuple)
+    ended: bool = False
 
     def to_wire(self) -> dict[str, Any]:
-        return {"language": self.language, "turn": self.turn}
+        return {
+            "language": self.language,
+            "loop": self.loop,
+            "turn": self.turn,
+            "ended": self.ended,
+        }
 
     def to_agent_context(
         self, case: Case, input_type: InputType, text: str
@@ -120,8 +145,10 @@ class StoryState:
             },
             "state": {
                 "language": self.language,
+                "loop": self.loop,
                 "turn": self.turn,
                 "facts": list(self.facts),
+                "ended": self.ended,
             },
             "recent_turns": [turn.to_dict() for turn in self.turns],
             "action": {"type": input_type, "text": text},
@@ -148,20 +175,28 @@ def apply_turn(
     narration: Narration,
 ) -> StoryState:
     """Fold one judged turn into the session."""
+    if state.ended:
+        raise RulingError("The story has already ended.")
     if input_type not in ("say", "do"):
         raise ValueError(f"Unsupported input type: {input_type!r}.")
+
     turns = (
         *state.turns,
         Turn(
             number=state.turn + 1,
+            loop=state.loop,
             input_type=input_type,
             player_input=player_input,
             narration=narration.text,
         ),
     )[-MEMORY_TURNS:]
+
     return replace(
         state,
-        turn=state.turn + 1,
+        # A returned morning counts as a new loop, and the character keeps its memory.
+        loop=state.loop + 1 if ruling.restart else state.loop,
+        turn=0 if ruling.restart else state.turn + 1,
         facts=_merge_facts(state.facts, ruling.facts),
         turns=turns,
+        ended=ruling.ending,
     )

@@ -13,6 +13,15 @@ player line (say or do)
     -> narration, hints, turn number returned to the page
 ```
 
+## The loop
+
+Every story the engine plays is a loop, and the engine does not decide what
+breaks it. The ruling may return `restart: true` — the turn only repeated the
+story and the world comes round to its first morning — or `ending: true` — the
+loop is broken and the story is over. Both are the storyteller's judgement,
+informed by the case's canon; the runtime only counts loops, resets the turn
+counter, and refuses further turns after an ending.
+
 ## Two phases, one judgement
 
 - **Ruling** decides privately what the action changes: an outcome

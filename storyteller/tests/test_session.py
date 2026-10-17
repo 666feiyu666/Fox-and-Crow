@@ -34,7 +34,9 @@ class RulingTests(unittest.TestCase):
         parsed = ruling(facts=["The crow blinked."])
         self.assertEqual(parsed.outcome, "partial")
         self.assertEqual(parsed.facts, ("The crow blinked.",))
-        self.assertEqual(set(parsed.to_dict()), {"outcome", "facts", "scene"})
+        self.assertEqual(
+            set(parsed.to_dict()), {"outcome", "facts", "scene", "restart", "ending"}
+        )
 
     def test_rejects_an_unknown_outcome(self):
         with self.assertRaises(RulingError):
@@ -92,9 +94,9 @@ class TurnTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             apply_turn(initial_state(), "shout", "hey", ruling(), narration())
 
-    def test_wire_carries_only_language_and_turn(self):
+    def test_wire_carries_the_language_the_loop_and_the_turn(self):
         wire = take(initial_state("en")).to_wire()
-        self.assertEqual(wire, {"language": "en", "turn": 1})
+        self.assertEqual(wire, {"language": "en", "loop": 1, "turn": 1, "ended": False})
 
 
 class ContextTests(unittest.TestCase):
@@ -108,6 +110,36 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(len(context["recent_turns"]), 1)
         self.assertNotIn("meters", context["state"])
         self.assertNotIn("clock", context["state"])
+
+
+class LoopTests(unittest.TestCase):
+    def test_a_restart_returns_to_the_same_morning_but_keeps_memory(self):
+        state = take(initial_state(), text="first")
+        state = take(state, text="second")
+        state = take(state, text="third", restart=True)
+        self.assertEqual(state.loop, 2)
+        self.assertEqual(state.turn, 0)
+        self.assertEqual(len(state.turns), 3)
+        self.assertEqual(state.turns[-1].loop, 1)
+
+    def test_an_ending_closes_the_story(self):
+        state = take(initial_state(), ending=True)
+        self.assertTrue(state.ended)
+        with self.assertRaises(RulingError):
+            take(state)
+
+    def test_restart_and_ending_cannot_both_be_true(self):
+        with self.assertRaises(RulingError):
+            ruling(restart=True, ending=True)
+
+    def test_flags_must_be_booleans(self):
+        with self.assertRaises(RulingError):
+            Ruling.from_dict({"outcome": "partial", "scene": "x", "restart": "yes"})
+
+    def test_a_plain_turn_is_neither(self):
+        state = take(initial_state())
+        self.assertFalse(state.ended)
+        self.assertEqual((state.loop, state.turn), (1, 1))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,19 @@ forest that is not what it looks like.
 Nothing is scripted. Every line you say or action you attempt is handed to the
 storyteller, which decides what it changes out there and continues the story.
 
+## The loop
+
+This story is a loop. The same morning comes round again — the cheese back in the
+crow's beak, the necklace back in the thorns, the bridge still broken — and only
+the fox remembers having lived it.
+
+Playing the fable the way the fable goes does not finish it. Get the cheese by
+flattery, get it by force, fail at both: the day ends and the morning comes back.
+The story ends only when the loop is broken, and breaking it is the storyteller's
+judgement, not a rule printed here: the fox has to stop treating the crow as a
+means, understand what she is actually carrying, and act on that. The page will
+never tell you when you are close.
+
 ## What the player is given
 
 - **Opening** — `opening.en.md` / `opening.zh.md`: the first passage, before the

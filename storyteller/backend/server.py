@@ -220,6 +220,11 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(409, {"error": "The story is still answering. Wait a moment."})
             return
 
+        if before.ended:
+            self.sessions.release(session_id)
+            self._send_json(409, {"error": "This story has ended. Start a new one."})
+            return
+
         try:
             ruling, narration = self.storyteller.resolve(before, input_type, text.strip())
             after = apply_turn(before, input_type, text.strip(), ruling, narration)
@@ -251,6 +256,8 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                 "narration": narration.text,
                 "hints": list(narration.hints),
                 "outcome": ruling.outcome,
+                "restart": ruling.restart,
+                "ending": ruling.ending,
                 "playerState": after.to_wire(),
             },
         )

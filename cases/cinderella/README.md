@@ -9,6 +9,19 @@ Nothing is scripted. Every line you say or action you attempt is handed to the
 storyteller, which decides what it changes in that house and at that court, and
 continues the story.
 
+## The loop
+
+This story is a loop. The day comes round again — the invitation on the table, the
+ash still damp, the slipper never having existed — and only Cinderella remembers
+having lived it.
+
+Playing the tale the way the tale goes does not finish it. Let the godmother dress
+you, dance until midnight, run, be found by the slipper: the day ends and the
+morning comes back. The story ends only when the loop is broken, and breaking it is
+the storyteller's judgement, not a rule printed here: Cinderella has to change her
+situation by her own action and be known as a person rather than a shoe size. The
+page will never tell you when you are close.
+
 ## What the player is given
 
 - **Opening** — `opening.en.md` / `opening.zh.md`: the first passage, before the

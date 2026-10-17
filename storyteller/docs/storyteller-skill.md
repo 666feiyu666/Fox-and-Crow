@@ -16,6 +16,14 @@ and limits. The player knows only what one character has seen and been told, and
 can do only one thing per turn. That asymmetry is the design: the player proposes,
 the storyteller answers.
 
+## The loop
+
+Every story is a loop, and the skill states the rule: walking the original story
+to its expected end returns the first morning, and only a break ends it. The skill
+does not contain the condition for any particular story — `world.md` gives that —
+and the storyteller is the one who judges whether a turn is a repeat, a break, or
+neither.
+
 ## Why two phases
 
 A single model call tends to let the writing decide the outcome: the passage

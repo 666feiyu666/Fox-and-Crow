@@ -7,7 +7,9 @@
       languageLabel: "中文",
       switchLanguage: "Switch language",
       youAre: "You are {name}",
-      turnLabel: "Turn {n}",
+      loopLabel: "Loop {loop} · Turn {turn}",
+      again: "Another beginning",
+      ended: "The story has ended. Restart to begin again.",
       say: "Say",
       do: "Do",
       placeholderSay: "One line you say…",
@@ -23,7 +25,9 @@
       languageLabel: "English",
       switchLanguage: "切换语言",
       youAre: "你扮演{name}",
-      turnLabel: "第 {n} 轮",
+      loopLabel: "第 {loop} 次循环 · 第 {turn} 轮",
+      again: "又一次开始",
+      ended: "故事结束了。重新开始可以再来一次。",
       say: "说",
       do: "做",
       placeholderSay: "你说一句话……",
@@ -56,7 +60,9 @@
   let busy = false;
   let hasTurns = false;
   let messageKey = null;
+  let loop = 1;
   let turn = 0;
+  let ended = false;
 
   function t(key, vars) {
     const template = I18N[language][key] ?? I18N.en[key] ?? key;
@@ -77,11 +83,15 @@
 
   function setBusy(value) {
     busy = value;
-    sendButton.disabled = value;
-    actionBox.disabled = value;
+    sendButton.disabled = value || ended;
+    actionBox.disabled = value || ended;
     modeButtons.forEach((button) => {
-      button.disabled = value;
+      button.disabled = value || ended;
     });
+  }
+
+  function renderStatus() {
+    turnLabel.textContent = t("loopLabel", { loop, turn });
   }
 
   function caseText(table) {
@@ -111,7 +121,7 @@
       button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
     });
     applyCase();
-    turnLabel.textContent = t("turnLabel", { n: turn });
+    renderStatus();
     if (messageKey) {
       message.textContent = t(messageKey);
     }
@@ -161,6 +171,13 @@
     body.className = "narration";
     renderParagraphs(body, text);
     article.appendChild(body);
+  }
+
+  function addDivider(text) {
+    const divider = document.createElement("div");
+    divider.className = "divider";
+    divider.textContent = text;
+    log.appendChild(divider);
   }
 
   function setHints(items) {
@@ -214,7 +231,9 @@
       const data = await request("/api/session", { language });
       sessionId = data.sessionId;
       caseInfo = data.case;
+      loop = data.playerState.loop;
       turn = data.playerState.turn;
+      ended = data.playerState.ended;
       addOpening(data.opening);
       paintChrome();
     } catch (error) {
@@ -226,7 +245,7 @@
   }
 
   async function takeTurn() {
-    if (busy || !sessionId) {
+    if (busy || ended || !sessionId) {
       return;
     }
     const text = actionBox.value.trim();
@@ -251,17 +270,24 @@
       const data = await request("/api/turn", { sessionId, type: chosenType, text });
       pending.remove();
       addNarration(data.narration);
+      loop = data.playerState.loop;
       turn = data.playerState.turn;
+      ended = data.playerState.ended;
       hasTurns = true;
-      turnLabel.textContent = t("turnLabel", { n: turn });
-      setHints(data.hints);
-      setMessage(null);
+      if (data.restart) {
+        addDivider(t("again"));
+      }
+      renderStatus();
+      setHints(ended ? [] : data.hints);
+      setMessage(ended ? "ended" : null);
     } catch (error) {
       pending.remove();
       setMessage(error.key || null, error.message || t("error"));
     } finally {
       setBusy(false);
-      actionBox.focus();
+      if (!ended) {
+        actionBox.focus();
+      }
     }
   }
 

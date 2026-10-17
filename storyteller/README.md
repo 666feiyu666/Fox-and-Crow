@@ -37,6 +37,13 @@ python -m unittest discover -s tests -t .
 
 The tests use a stub model: they never call the API and never spend credit.
 
+## The loop, which every case shares
+
+A story is a loop, and it ends only when the loop is broken. Walking the original
+story to its usual end leads back to the first morning; only a break ends it, and
+what counts as a break is the storyteller's judgement, guided by that case's canon.
+Nothing in the engine scores it, and the page never tells the player the condition.
+
 ## What a case gives the agent
 
 | File | Content |

@@ -19,8 +19,10 @@ class StubModel:
 
     configured = True
 
-    def __init__(self, fail=None):
+    def __init__(self, fail=None, restart=False, ending=False):
         self.fail = fail
+        self.restart = restart
+        self.ending = ending
         self.turns = 0
 
     def complete_json(self, system, user, **kwargs):
@@ -32,6 +34,8 @@ class StubModel:
                 "outcome": "partial",
                 "facts": [f"Turn {self.turns} happened."],
                 "scene": "Private plan.",
+                "restart": self.restart,
+                "ending": self.ending,
             }
         return {"narration": "You move, and the world answers.", "hints": ["Wait.", "Look up."]}
 
@@ -102,7 +106,10 @@ class BasicServerTests(ServerTestBase):
         self.assertEqual(payload["case"]["id"], FOX.id)
         self.assertEqual(payload["case"]["title"]["zh"], "狐狸与乌鸦")
         self.assertEqual(payload["case"]["player"]["zh"], "狐狸")
-        self.assertEqual(payload["playerState"], {"language": "zh", "turn": 0})
+        self.assertEqual(
+            payload["playerState"],
+            {"language": "zh", "loop": 1, "turn": 0, "ended": False},
+        )
 
     def test_session_rejects_an_unknown_language(self):
         status, _ = self.request("POST", "/api/session", {"language": "fr"})
@@ -115,7 +122,10 @@ class BasicServerTests(ServerTestBase):
         self.assertEqual(payload["narration"], "You move, and the world answers.")
         self.assertEqual(payload["hints"], ["Wait.", "Look up."])
         self.assertEqual(payload["outcome"], "partial")
-        self.assertEqual(payload["playerState"], {"language": "en", "turn": 1})
+        self.assertEqual(
+            payload["playerState"],
+            {"language": "en", "loop": 1, "turn": 1, "ended": False},
+        )
         self.assertNotIn("events", payload)
 
     def test_turn_validates_its_payload(self):
@@ -157,6 +167,35 @@ class CinderellaServerTests(ServerTestBase):
         session = self.new_session("zh")
         self.assertEqual(session["case"]["title"]["zh"], "灰姑娘")
         self.assertEqual(session["opening"], CINDERELLA.opening("zh"))
+
+
+class LoopServerTests(ServerTestBase):
+    def make_model(self):
+        return StubModel(restart=True)
+
+    def test_a_returned_morning_is_reported(self):
+        session_id = self.new_session()["sessionId"]
+        status, payload = self.take_turn(session_id)
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["restart"])
+        self.assertFalse(payload["ending"])
+        self.assertEqual(payload["playerState"]["loop"], 2)
+        self.assertEqual(payload["playerState"]["turn"], 0)
+
+
+class EndedStoryServerTests(ServerTestBase):
+    def make_model(self):
+        return StubModel(ending=True)
+
+    def test_a_broken_loop_closes_the_story(self):
+        session_id = self.new_session()["sessionId"]
+        status, payload = self.take_turn(session_id)
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ending"])
+        self.assertTrue(payload["playerState"]["ended"])
+        status, payload = self.take_turn(session_id)
+        self.assertEqual(status, 409)
+        self.assertIn("ended", payload["error"])
 
 
 class ModelFailureTests(ServerTestBase):

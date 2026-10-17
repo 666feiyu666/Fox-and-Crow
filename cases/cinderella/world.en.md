@@ -8,6 +8,10 @@ magic can give her one evening; it ends at midnight, and one glass slipper stays
 behind. What the night is for — and what she does with what she learns there — is
 the player's to decide.
 
+This day has already happened many times: the invitation on the table, the ash
+still damp, the clock tower the same. Unless something changes that returning to
+this morning cannot undo, it will happen again.
+
 ## Cast
 
 ### Cinderella (the player)
@@ -76,6 +80,16 @@ the player's to decide.
 
 ## Rules of the world
 
+- The day returns. When the ball ends, when midnight passes, or when the story
+  simply plays out the way the tale always plays it — the godmother's magic, the
+  flight at midnight, the prince finding her by the slipper — the world comes back
+  to the same morning: the invitation still on the table, the ash still damp, the
+  slipper never having existed.
+- Only Cinderella remembers. The stepmother, the sisters, the prince, and the
+  godmother begin again without explicit memory; at most a faint, unexplained
+  familiarity survives.
+- Within the single day the world is ordinary and continuous: what was said,
+  promised, or broken stays as it happened until the day returns.
 - The godmother's magic lasts one evening and ends at the last stroke of
   midnight. What it made reverts: the coach to a pumpkin, the horses to mice, the
   dress to what it was.
@@ -102,12 +116,14 @@ the player's to decide.
 - Do not moralise, and do not end with a stated lesson.
 - Do not depict violence, self-harm, or humiliation in detail.
 
-## Where this story is going
+## Breaking the loop
 
-Nothing here decides the ending; it only says what a satisfying one would touch on.
-The story has run its course when the evening's real question has been answered by
-what happened — when Cinderella is known for who she is by someone whose knowing
-changes what she can do next, and her situation has changed through her own
-action. The slipper, the ball, and the prince are available routes, not required
-ones. A night that ends with the household unchanged and Cinderella choosing to
-return to the ash has not ended; it has only paused.
+The loop ends only when Cinderella changes her situation by her own action rather
+than by being recognised, chosen, or carried away: when she says what she wants,
+claims what she is owed, and is known as a person by someone whose knowing changes
+what she can do next, rather than as the size of a shoe. The slipper matching, the
+prince choosing her, and the godmother's magic are none of them a break; walking
+the tale to its usual end only returns the morning.
+
+This is a judgement the storyteller makes, not a rule the player can look up. Show
+it through what returns and what does not.

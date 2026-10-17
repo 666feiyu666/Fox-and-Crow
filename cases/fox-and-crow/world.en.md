@@ -7,6 +7,9 @@ beneath the tree where a crow sits with cheese in her beak. The crow has lost
 something in the thorn bush and cannot reach it. The only land route out of the
 forest is a bridge that is already broken, and nobody has told the fox.
 
+The same morning has happened before, and it will happen again unless something
+changes that the returning day cannot undo.
+
 ## Cast
 
 ### The fox (the player)
@@ -70,8 +73,15 @@ forest is a bridge that is already broken, and nobody has told the fox.
 
 ## Rules of the world
 
-- The world is continuous. Actions, injuries, promises, gifts, and losses stay as
-  they happen. Nothing is undone by nightfall or by luck.
+- The morning returns. When the day runs out, when the fox dies, or when the story
+  simply plays out the way the fable always plays it, the world comes round to the
+  same misty dawn beside the tree: the cheese back in the crow's beak, the necklace
+  back in the thorns, the bridge still broken.
+- Only the fox remembers. The crow and everyone else begin again without explicit
+  memory of what happened; at most a faint, unexplained familiarity survives, and
+  it never lets them skip proof.
+- Within a single morning the world is ordinary and continuous: actions, injuries,
+  promises, and gifts stay as they happen until the day returns.
 - Physical limits are ordinary: the fox cannot climb the high branch, cannot swim
   the river, cannot lift what is too heavy. The crow can fly over the river but
   cannot work with her wings in dense thorns.
@@ -95,11 +105,13 @@ forest is a bridge that is already broken, and nobody has told the fox.
 - Do not use fable-style moralizing, meta-commentary, or a closing explanation of
   the theme.
 
-## Where this story is going
+## Breaking the loop
 
-Nothing here decides the ending; it only says what a satisfying one would touch on.
-The story has run its course when the fox stops treating the crow as a means to the
-cheese or to the road out — when it has understood her situation and acted on that
-without being asked or rewarded, and she has answered by choice rather than
-convenience. Cheese alone, the necklace alone, a patched bridge, or leaving the
-forest alone are none of them an ending.
+The loop ends only when the fox stops treating the crow as a means to the cheese or
+to the road out: when it has understood her situation and acted on that without
+being asked or rewarded, and she has answered by choice rather than convenience.
+Cheese alone, the necklace alone, a patched bridge, or leaving the forest alone do
+not break it — and neither does failing at them, however often.
+
+This is a judgement the storyteller makes, not a rule the player can look up. Show
+it through what returns and what does not.
