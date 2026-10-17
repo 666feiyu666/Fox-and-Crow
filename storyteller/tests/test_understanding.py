@@ -9,16 +9,11 @@ from backend.understanding import (
     UnderstandingError,
     source_digest,
 )
+from tests.fixtures import understanding_payload
 
 
 def payload(**overrides):
-    base = {
-        "player": "the fox",
-        "canon": "# World\n\n## Premise\nA forest.",
-        "opening": "Cold moss under your paws.",
-    }
-    base.update(overrides)
-    return base
+    return understanding_payload(**{"player": "the fox", **overrides})
 
 
 class UnderstandingTests(unittest.TestCase):
@@ -26,7 +21,32 @@ class UnderstandingTests(unittest.TestCase):
         understanding = Understanding.from_dict(payload())
         self.assertEqual(understanding.player, "the fox")
         self.assertIn("Premise", understanding.canon)
-        self.assertEqual(set(understanding.to_dict()), {"player", "canon", "opening"})
+        self.assertEqual(set(understanding.to_dict()), {"player", "canon", "opening", "space"})
+
+    def test_source_evidence_must_actually_exist(self):
+        understanding = Understanding.from_dict(payload())
+        understanding.validate_source("a tale")
+        with self.assertRaises(UnderstandingError):
+            understanding.validate_source("another source")
+
+    def test_space_rejects_ambiguous_or_incomplete_structure(self):
+        for field, value in (("anchors", []), ("fixed_keys", ["unknown"]),
+                             ("possibilities", "not an array"), ("style", "")):
+            data = payload()
+            data["space"][field] = value
+            with self.subTest(field=field), self.assertRaises(UnderstandingError):
+                Understanding.from_dict(data)
+
+    def test_duplicate_initial_property_keys_are_rejected(self):
+        data = payload()
+        data["space"]["initial_facts"].append(data["space"]["initial_facts"][0])
+        with self.assertRaises(UnderstandingError):
+            Understanding.from_dict(data)
+
+    def test_possibilities_do_not_become_initial_facts(self):
+        understanding = Understanding.from_dict(payload())
+        self.assertNotIn("negotiate", str(understanding.space.initial_facts))
+        self.assertIn("negotiate", str(understanding.space.possibilities))
 
     def test_rejects_missing_or_blank_fields(self):
         for field in ("player", "canon", "opening"):

@@ -10,16 +10,13 @@ from backend.model import ConfigurationError, ModelError
 from backend.server import SessionRegistry, create_server
 from backend.storyteller import Storyteller
 from backend.understanding import UnderstandingCache
+from tests.fixtures import OPENING, ruling_payload, understand_reply, understanding_payload
 
 CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
 CINDERELLA = Case.load(CASE_ROOT / "cinderella")
 
-UNDERSTANDING = {
-    "player": "the fox",
-    "canon": "# World\n\n## Premise\nA forest.",
-    "opening": "Cold moss under your paws.",
-}
+UNDERSTANDING = understanding_payload()
 
 
 class StubModel:
@@ -35,18 +32,14 @@ class StubModel:
 
     def complete_json(self, system, user, **kwargs):
         if "case object only" in system:
-            return UNDERSTANDING
+            return understand_reply(system, user)
+        if user.startswith("Opening input:"):
+            return OPENING
         if self.fail is not None:
             raise self.fail
         if "judge for this turn" in system:
             self.turns += 1
-            return {
-                "outcome": "partial",
-                "facts": [f"Turn {self.turns} happened."],
-                "scene": "Private plan.",
-                "restart": self.restart,
-                "ending": self.ending,
-            }
+            return ruling_payload(restart=self.restart, ending=self.ending)
         return {"narration": "You move, and the world answers.", "hints": ["Wait.", "Look up."]}
 
 
@@ -127,6 +120,10 @@ class BasicServerTests(ServerTestBase):
     def test_session_rejects_an_unknown_language(self):
         status, _ = self.request("POST", "/api/session", {"language": "fr"})
         self.assertEqual(status, 400)
+
+    def test_the_session_says_whether_the_understander_just_ran(self):
+        self.assertEqual(self.new_session("en")["understandingSource"], "derived")
+        self.assertEqual(self.new_session("en")["understandingSource"], "cached")
 
     def test_turn_returns_the_next_passage(self):
         session = self.new_session()
@@ -218,6 +215,37 @@ class ModelFailureTests(ServerTestBase):
     def test_an_unconfigured_model_is_a_503(self):
         status, _ = self.take_turn(self.new_session()["sessionId"])
         self.assertEqual(status, 503)
+
+
+class UncommittedTurnTests(ServerTestBase):
+    def test_failed_writer_leaves_state_and_audit_untouched_and_can_retry(self):
+        session_id = self.new_session()["sessionId"]
+        before = self.sessions.claim(session_id)
+        self.sessions.release(session_id)
+        original = self.model.complete_json
+
+        def invalid_writer(system, user, **kwargs):
+            if user.startswith("Turn input with the final ruling:"):
+                return {"narration": ""}
+            return original(system, user, **kwargs)
+
+        self.model.complete_json = invalid_writer
+        status, _ = self.take_turn(session_id)
+        self.assertEqual(status, 502)
+        after = self.sessions.claim(session_id)
+        self.sessions.release(session_id)
+        self.assertEqual(before, after)
+        self.assertFalse(after.turns)
+        self.model.complete_json = original
+        status, payload = self.take_turn(session_id)
+        self.assertEqual((status, payload["playerState"]["turn"]), (200, 1))
+
+    def test_session_initialises_hidden_world_without_exposing_it(self):
+        session = self.new_session()
+        self.assertNotIn("hidden-password", str(session))
+        state = self.sessions.claim(session["sessionId"])
+        self.sessions.release(session["sessionId"])
+        self.assertIn("hidden-password", str(state.facts))
 
 
 class ModelRejectionTests(ServerTestBase):

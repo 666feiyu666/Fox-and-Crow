@@ -1,100 +1,133 @@
 # Engine architecture
 
-`storyteller/` is an engine with no story of its own. A case in `cases/` supplies
-only the original tale; the engine derives the rest and then runs the turns, all
-as LangGraph graphs. One process plays one case.
+A case provides its title and original tale in each supported language. The same
+three skills work for every case; no plot, object name, character or ending is
+hard-coded in the engine. One process serves one case.
+
+## Preparation
+
+The preparation graph is:
 
 ```text
-first session in a language
-    -> LangGraph: understand
-         understand   original tale -> player + canon + opening (cached beside the case)
-
-player line (say or do)
-    -> POST /api/turn
-    -> LangGraph: judge -> write
-         judge   canon + state + action -> ruling JSON      (no prose)
-         write   canon + ruling         -> narration + hints (no verdicts)
-    -> session.py records the turn and the facts the ruling declared
-    -> narration, hints, loop and turn returned to the page
+START -> understand -> write_opening -> END
 ```
 
-## Three agents, two graphs
+The understander returns player, canon, an opening seed and a structured space:
 
-`backend/graph.py` compiles two LangGraph `StateGraph`s.
-
-**Understanding** — `START -> understand -> END`:
-
-- **understand** — its own skill, `skills/understand/SKILL.md`. It reads the tale,
-  makes semantic sense of it, and abstracts it into the player's role, the world
-  canon, and the opening passage. The
-  result is validated, fingerprinted against the tale, and cached at
-  `cases/<case>/.generated/understanding.<lang>.json`.
-
-**The turn** — `START -> judge -> write -> END`:
-
-- **judge** — its own skill, `skills/judge/SKILL.md`. It reads the derived canon,
-  the state, and the player's line, and returns the ruling: outcome, facts, a
-  private scene plan, and whether the turn restarts or ends the loop. It writes no
-  prose.
-- **write** — its own skill, `skills/writer/SKILL.md`. It receives the ruling as
-  final and writes the visible passage and hints. It makes no verdicts.
-
-The edge runs one way only, so prose can never overrule judgement. The understander
-runs once per language: the cache is keyed by a digest of the tale, so an edited
-tale regenerates it and nothing stale survives.
-
-## The loop
-
-Every story the engine plays is a loop, and the engine does not decide what breaks
-it. The ruling may return `restart: true` — the turn only repeated the story and
-the world comes round to its first morning — or `ending: true` — the loop is broken
-and the story is over. Both are the judge's decision, informed by the derived
-canon; the runtime only counts loops, resets the turn counter, and refuses further
-turns after an ending.
-
-## Who owns what
-
-| Concern | Owner |
+| Field | Meaning |
 | --- | --- |
-| Derivation rules: what to take from a tale | `skills/understand/SKILL.md` |
-| Judgement rules and the ruling contract | `skills/judge/SKILL.md` |
-| Narrative craft and the narration contract | `skills/writer/SKILL.md` |
-| Graph topologies and node wiring | `backend/graph.py` |
-| The derived player, canon, opening, and its cache | `backend/understanding.py` |
-| The original tale | `cases/<case>/source.<lang>.md` |
-| Story id and title | `cases/<case>/case.json` |
-| Turn history and declared facts | `backend/session.py` |
-| Prompt assembly and the agent calls | `backend/storyteller.py` |
-| Case loading and validation | `backend/case.py` |
-| Model transport | `backend/model.py` |
-| HTTP surface, sessions, error mapping | `backend/server.py` |
-| Playable page, bilingual UI | `web/` |
+| anchors | Source-grounded claims with exact excerpts from this case's tale |
+| situation | The point of divergence and independent pressures already present |
+| initial_facts | Keyed current properties and the actors who know their values |
+| fixed_keys | Initial properties that actual world rules make unchangeable |
+| possibilities | Uncommitted avenues of action and questions, never current facts |
+| adaptation | Authored loop, reset and ending principles, distinguished from the source |
+| style | Public writing voice without hidden goals, solutions or future reveals |
 
-The skills are loaded at startup and sent with every request. Editing a skill
-changes one agent's behaviour; editing a case's tale changes one story, and the
-understanding is derived again from it.
+Canon labels source material, inferences and adaptation. An exact quotation is
+checked against the source; the program does not verify that the quote logically
+entails the model's interpretation. Initial facts may include fixed secrets; gaps
+remain open for later completion. Characterization informs play without deciding
+the player's new intentions.
 
-## What the runtime does
+The writer renders the opening seed using the same craft resource as turns.
+Preparation completes only when the space and the written opening both succeed.
+The result is cached in `cases/<case>/.generated/understanding.<lang>.json`.
 
-The runtime is deliberately thin. It does not decide outcomes, endings, or pacing.
+Schema version 2 invalidates older readings. The cache fingerprint covers the
+source, language, preparation and writer skills (including loaded craft), task
+instructions, model id and endpoint. Restart the process to load edited files.
+A compatible cached reading is reused without model calls. Preparation costs two
+calls when needed, and each ordinary turn costs two.
 
-- Derives the case once per language, caches it beside the case, and regenerates it
-  when the tale's digest changes.
-- Rejects malformed output: an unknown `outcome`, a missing `scene`, a narration
-  without text, a ruling that both restarts and ends, or an understanding missing
-  its player, canon, or opening is answered with `502`, and no state moves.
-- Keeps the last eight turns and up to forty declared facts, which are the only
-  memory the agents are given besides the canon.
-- Validates input: one line, at most 400 characters, `say` or `do`; one turn in
-  flight per session (`409` otherwise).
-- Maps model failures to `503`/`502` without advancing the story.
+## A turn
 
-## Current limits
+```text
+player action
+  -> judge: current world + source-grounded space + recent play
+  -> validate proposal and project its consequences (no mutation)
+  -> writer: visible projection + perceptible events + brief + voice
+  -> validate narration
+  -> commit state, knowledge, memory and complete ruling together
+  -> return passage, optional hints and public status
+```
 
-- Sessions live in process memory; a restart clears them.
-- Continuity is eight turns plus declared facts, not a narrative database.
-- The deriver is an LLM: two runs over the same tale can differ. The cache is what
-  makes a run stable, and the cached JSON is meant to be reviewed and edited.
-- One process serves one case; a different case means a different process.
-- Passing tests describe implementation behaviour only. They say nothing about
-  narrative quality, Agent capability, author utility, or research validity.
+The judge can settle relevant undecided details as expansions. It can accept
+unanticipated methods, follow NPC goals, let a player refuse the original aim,
+and judge different trajectories. It must not make a fixed secret move or invent
+a restriction just to force a route.
+
+The ruling carries intent, outcome, observed/offscreen events, expansions,
+changes, observations, optional memory notes, a writing brief and loop flags.
+
+- **expansions** establish new background properties under new keys. They persist
+  across loops. Their initial known_by is empty; discoveries use observations.
+- **changes** replace current property values under stable keys for this loop.
+  Their known_by describes knowledge of the new value, not an obsolete one.
+- **observations** grant an actor knowledge of a current or newly proposed fact.
+- **events** say what happened and who perceived it. Offscreen events remain in
+  the private audit; experienced events become loop-tagged player memories.
+- **brief** supplies visible material, focus, suggested prose mode, uncertainty
+  and the next decision before which writing stops.
+
+Duplicate update keys, redefined expansions, changed fixed properties, absent
+observation targets, incompatible loop flags/modes and incomplete proposals are
+rejected before the turn writer is called. Oversized structured data is rejected
+rather than silently cut. These are structural and keyed consistency guarantees;
+natural-language causality and fair interpretation remain model responsibilities.
+
+## State and knowledge
+
+StoryState keeps the initial snapshot, persistent completions, loop-local
+overrides, loop-tagged player memories, and the full private turn audit. Current
+facts merge by key, so an object has one current holder instead of accumulating
+contradictory holder sentences. Fixed properties cannot acquire a different value
+through a change.
+
+A restart discards loop-local actions and knowledge overlays, restores initial
+facts and retains persistent world completions and the player's memories. NPCs
+therefore do not retain discoveries from an earlier loop. Old event memories
+remain history with an explicit loop number.
+
+A memory reference has up to eight recent passages, plus established current facts
+and retained player memories. The full audit is kept in process memory; the model
+does not receive every private past ruling. There is no disk-backed session log,
+retrieval index or long-session memory compression yet.
+
+## The writer's boundary
+
+The writer receives no full canon, private possibilities or hidden fact table.
+Its prompt contains the role, language and public style. Its input contains only
+player-known projected facts, witnessed events, player memories, the opening,
+recent visible play and a player-visible brief. A restart projects the reset
+world for writing, rather than the obsolete pre-reset object state.
+
+The judge still has to respect visibility when composing the free-text brief.
+Filtering structured facts is not a semantic proof that a brief, style reference
+or generated passage cannot leak information.
+
+The writer chooses concrete language, dialogue delivery, sensory texture and
+rhythm. A new promise, usable object, revelation or relationship change requires
+an authorised event or fact. Modes are direct, dialogue, action, transition,
+return and ending; they are presentation guidance. Hints are optional.
+
+`skills/writer/references/craft.md` is explicitly loaded by case.py and appended to
+the writer skill. A Markdown link alone does not load a resource into the API
+model. Both openings and turn passages use that loaded craft.
+
+## Generality, language and limits
+
+Existing and future cases use the same contracts. A new case requires case.json
+and source.en.md/source.zh.md; preparation derives its own cast, world and voice.
+Looping remains this project's shared adaptation convention, without a fixed
+moral solution in Python.
+
+Each language currently receives a separate preparation. This preserves the
+supplied source wording but does not guarantee identical interpretations between
+languages; cross-language equivalence remains a separate evaluation task.
+
+The HTTP surface retains language/loop/turn/ended status and narration/hints.
+Model or validation failure leaves the committed session untouched. Sessions
+remain process-local, and process restart clears them. Passing offline tests
+establishes implementation behavior, not prose quality, player agency or research
+validity.

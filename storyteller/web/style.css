@@ -171,6 +171,29 @@ header.top {
   font-style: italic;
 }
 
+.entry.understanding {
+  font-family: var(--ui);
+  font-size: 0.86rem;
+  line-height: 1.7;
+  color: var(--dim);
+}
+
+.entry.understanding p {
+  margin: 0 0 0.45rem;
+}
+
+.entry.understanding .understanding-heading {
+  color: var(--moss);
+}
+
+.entry.understanding .understanding-slow {
+  font-style: italic;
+}
+
+.entry.understanding p:last-child {
+  margin-bottom: 0;
+}
+
 .entry.fresh {
   animation: ink 240ms ease-out both;
 }

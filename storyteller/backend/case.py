@@ -62,6 +62,12 @@ def _skill(skills: Path, stage: str) -> str:
         raise CaseError(f"Agent skill is missing: {path}") from error
     if not text:
         raise CaseError(f"Agent skill is empty: {path}")
+    if stage == "writer":
+        resource = Path(skills) / stage / "references" / "craft.md"
+        try:
+            text += "\n\n---\n\n" + resource.read_text(encoding="utf-8")
+        except FileNotFoundError as error:
+            raise CaseError(f"Writer craft resource is missing: {resource}") from error
     return text
 
 
@@ -108,8 +114,8 @@ class Case:
 
     def understand_prompt(self, language: str) -> str:
         brief = (
-            f"The story language is {language}: write the player, the canon, and the "
-            f"opening in {language}, and keep every name as the tale gives it."
+            f"The story language is {language}: write all prose fields in {language}, "
+            f"and keep every name as the tale gives it. JSON keys and actor ids stay stable."
         )
         return (
             f"{self.understand}\n\n---\n\n{brief}\n\n---\n\n"
@@ -125,7 +131,12 @@ class Case:
         return f"{instructions}\n\n---\n\n{brief}\n\n---\n\n{understanding.canon}"
 
     def judge_prompt(self, language: str, understanding: Understanding) -> str:
-        return self._stage_prompt(self.judge, language, understanding)
+        return (self._stage_prompt(self.judge, language, understanding)
+                + "\n\n# Prepared story space\n"
+                + json.dumps(understanding.space.to_dict(), ensure_ascii=False))
 
     def writer_prompt(self, language: str, understanding: Understanding) -> str:
-        return self._stage_prompt(self.writer, language, understanding)
+        # Hidden canon, unresolved possibilities and NPC goals belong to judgement.
+        return (f"{self.writer}\n\nThe player plays {understanding.player}.\n"
+                f"The story language is {language}: write everything in {language}.\n"
+                f"\n# Story voice\n{understanding.space.style}")

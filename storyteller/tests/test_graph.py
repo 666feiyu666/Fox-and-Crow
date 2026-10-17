@@ -3,6 +3,7 @@ import unittest
 from backend.graph import build_turn_graph, build_understanding_graph
 from backend.session import Narration, Ruling
 from backend.understanding import Understanding
+from tests.fixtures import ruling_payload, understanding_payload
 
 
 class GraphTests(unittest.TestCase):
@@ -11,9 +12,7 @@ class GraphTests(unittest.TestCase):
 
         def judge(prompt, context):
             calls.append(("judge", prompt, context["action"]["text"]))
-            return Ruling.from_dict(
-                {"outcome": "failure", "facts": ["The crow turned away."], "scene": "She turns."}
-            )
+            return Ruling.from_dict(ruling_payload(outcome="failure"))
 
         def write(prompt, context, ruling):
             calls.append(("write", prompt, ruling.outcome))
@@ -39,7 +38,7 @@ class GraphTests(unittest.TestCase):
 
         def judge(prompt, context):
             seen["judge"] = prompt
-            return Ruling.from_dict({"outcome": "success", "facts": [], "scene": "plan"})
+            return Ruling.from_dict(ruling_payload(outcome="success"))
 
         def write(prompt, context, ruling):
             seen["writer"] = prompt
@@ -52,13 +51,13 @@ class GraphTests(unittest.TestCase):
 
     def test_a_rejected_ruling_stops_the_turn(self):
         def judge(prompt, context):
-            return Ruling.from_dict({"outcome": "success", "facts": [], "scene": "plan"})
+            raise ValueError("Rejected ruling")
 
         def write(prompt, context, ruling):
             raise AssertionError("the writer must not run when the judge fails")
 
         graph = build_turn_graph(judge, write)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             graph.invoke(
                 {"judge_prompt": "J", "writer_prompt": "W", "context": {"action": {"type": "do", "text": "x"}}}
             )
@@ -70,9 +69,8 @@ class UnderstandingGraphTests(unittest.TestCase):
 
         def understand(prompt, source):
             calls.append((prompt, source))
-            return Understanding.from_dict(
-                {"player": "the fox", "canon": "# World", "opening": "Cold moss."}
-            )
+            return Understanding.from_dict(understanding_payload(
+                player="the fox", canon="# World", opening="Cold moss."))
 
         graph = build_understanding_graph(understand)
         result = graph.invoke({"prompt": "READ-THE-TALE", "source": "a tale"})

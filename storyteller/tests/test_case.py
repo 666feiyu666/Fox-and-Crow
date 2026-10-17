@@ -5,16 +5,11 @@ from pathlib import Path
 
 from backend.case import Case, CaseError
 from backend.understanding import Understanding
+from tests.fixtures import understanding_payload
 
 CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 
-DERIVED = Understanding.from_dict(
-    {
-        "player": "the fox",
-        "canon": "# World\n\n## Premise\nA forest.",
-        "opening": "Cold moss.",
-    }
-)
+DERIVED = Understanding.from_dict(understanding_payload(player="the fox"))
 
 
 def write_case(directory: Path, *, title=None, skip=None) -> Path:
@@ -69,11 +64,15 @@ class FoxAndCrowCaseTests(unittest.TestCase):
         self.assertIn(self.case.source("zh"), prompt)
         self.assertIn("The story language is zh", prompt)
 
-    def test_stage_prompts_carry_the_derived_canon(self):
+    def test_judge_gets_private_space_while_writer_gets_only_voice(self):
         english = self.case.judge_prompt("en", DERIVED)
         chinese = self.case.writer_prompt("zh", DERIVED)
         self.assertIn(DERIVED.canon, english)
-        self.assertIn(DERIVED.canon, chinese)
+        self.assertNotIn(DERIVED.canon, chinese)
+        self.assertNotIn("hidden-password", chinese)
+        self.assertNotIn("negotiate", chinese)
+        self.assertIn(DERIVED.space.style, chinese)
+        self.assertIn("Writing craft for playable passages", chinese)
         self.assertIn("the fox", english)
         self.assertIn("The story language is zh", chinese)
 

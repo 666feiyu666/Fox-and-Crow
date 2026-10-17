@@ -21,6 +21,7 @@ from backend.case import LANGUAGES, Case, CaseError
 from backend.model import ConfigurationError, ModelError, load_env_local
 from backend.session import RulingError, StoryState, apply_turn, initial_state
 from backend.storyteller import Storyteller
+from backend.understanding import Understanding
 
 MAX_INPUT_LENGTH = 400
 MAX_REQUEST_BYTES = 8192
@@ -45,9 +46,11 @@ class SessionRegistry:
         self._states: dict[str, StoryState] = {}
         self._busy: set[str] = set()
 
-    def create(self, language: str) -> tuple[str, StoryState]:
+    def create(
+        self, language: str, understanding: Understanding | None = None,
+    ) -> tuple[str, StoryState]:
         session_id = uuid.uuid4().hex
-        state = initial_state(language)
+        state = initial_state(language, understanding)
         with self._lock:
             self._states[session_id] = state
         return session_id, state
@@ -163,7 +166,9 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(400, {"error": "language must be en or zh."})
             return
         try:
-            understanding = self.storyteller.understanding(language)
+            understanding, understanding_source = self.storyteller.understanding_with_source(
+                language
+            )
         except ConfigurationError:
             self._send_json(
                 503, {"error": "The Storyteller is not configured yet. Try again later."}
@@ -179,7 +184,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             )
             return
 
-        session_id, state = self.sessions.create(language)
+        session_id, state = self.sessions.create(language, understanding)
         self._send_json(
             201,
             {
@@ -190,6 +195,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                     "player": understanding.player,
                 },
                 "opening": understanding.opening,
+                "understandingSource": understanding_source,
                 "playerState": state.to_wire(),
             },
         )

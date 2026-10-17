@@ -3,143 +3,156 @@ from pathlib import Path
 
 from backend.case import Case
 from backend.session import (
-    MEMORY_TURNS,
-    Narration,
-    Ruling,
-    RulingError,
-    apply_turn,
-    initial_state,
+    MEMORY_TURNS, Narration, Ruling, RulingError, apply_turn, initial_state, writer_context,
 )
+from backend.understanding import Understanding
+from tests.fixtures import NARRATION, ruling_payload, understanding_payload
 
-CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
-FOX = Case.load(CASE_ROOT / "fox-and-crow")
+FOX = Case.load(Path(__file__).resolve().parents[2] / "cases" / "fox-and-crow")
+PREPARED = Understanding.from_dict(understanding_payload())
 
 
 def ruling(**overrides):
-    payload = {'outcome': "partial", "facts": [], "scene": "A private plan."}
-    payload.update(overrides)
-    return Ruling.from_dict(payload)
+    return Ruling.from_dict(ruling_payload(**overrides))
 
 
-def narration(text="a line"):
-    return Narration.from_dict({"narration": f"You act: {text}", "hints": ["Wait."]})
-
-
-def take(state, kind="say", text="a line", **overrides):
-    return apply_turn(state, kind, text, ruling(**overrides), narration(text))
+def take(state, text="a line", **overrides):
+    return apply_turn(state, "do", text, ruling(**overrides), Narration.from_dict(NARRATION))
 
 
 class RulingTests(unittest.TestCase):
-    def test_accepts_a_well_formed_ruling(self):
-        parsed = ruling(facts=["The crow blinked."])
-        self.assertEqual(parsed.outcome, "partial")
-        self.assertEqual(parsed.facts, ("The crow blinked.",))
-        self.assertEqual(
-            set(parsed.to_dict()), {"outcome", "facts", "scene", "restart", "ending"}
-        )
+    def test_round_trip_preserves_events_and_brief(self):
+        parsed = ruling()
+        self.assertEqual(Ruling.from_dict(parsed.to_dict()), parsed)
 
-    def test_rejects_an_unknown_outcome(self):
+    def test_rejects_malformed_or_incomplete_proposals(self):
+        invalid = [
+            {"outcome": "triumph"}, {"outcome": []}, {"brief": {}},
+            {"events": []}, {"events": [{"text": "Secret", "observers": ["keeper"]}]},
+            {"restart": "yes"}, {"restart": True, "ending": True},
+            {"changes": [{"key": "x", "value": "a"}, {"key": "x", "value": "b"}]},
+            {"expansions": [{"key": "x", "value": "x"}] * 7},
+        ]
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(RulingError):
+                ruling(**payload)
+
+    def test_writing_mode_cannot_disagree_with_ending(self):
+        payload = ruling_payload()
+        payload["brief"]["mode"] = "ending"
         with self.assertRaises(RulingError):
-            ruling(outcome="triumph")
-
-    def test_requires_a_scene(self):
-        with self.assertRaises(RulingError):
-            ruling(scene="   ")
-
-    def test_keeps_at_most_three_facts(self):
-        parsed = ruling(facts=["a", "b", "c", "d"])
-        self.assertEqual(len(parsed.facts), 3)
-
-    def test_ignores_unrelated_numbers(self):
-        parsed = Ruling.from_dict(
-            {"outcome": "success", "scene": "x", "meters": {"trust": 2}, "time_cost": 3}
-        )
-        self.assertEqual(parsed.outcome, "success")
+            Ruling.from_dict(payload)
 
 
 class NarrationTests(unittest.TestCase):
-    def test_requires_text_and_limits_hints(self):
+    def test_text_is_required_but_hints_are_optional(self):
         self.assertEqual(Narration.from_dict({"narration": "You wait."}).hints, ())
         with self.assertRaises(RulingError):
-            Narration.from_dict({"narration": "   "})
-        hints = Narration.from_dict(
+            Narration.from_dict({"narration": " "})
+        self.assertEqual(len(Narration.from_dict(
             {"narration": "You wait.", "hints": ["a", "b", "c", "d"]}
-        ).hints
-        self.assertEqual(len(hints), 3)
+        ).hints), 3)
 
 
 class TurnTests(unittest.TestCase):
-    def test_a_turn_records_what_the_player_and_the_story_said(self):
-        state = take(initial_state("zh"), text="你看着乌鸦。")
-        self.assertEqual(state.turn, 1)
-        self.assertEqual(state.language, "zh")
-        self.assertEqual(state.turns[0].player_input, "你看着乌鸦。")
-        self.assertEqual(state.turns[0].narration, "You act: 你看着乌鸦。")
+    def setUp(self):
+        self.state = initial_state("en", PREPARED)
 
-    def test_facts_accumulate_without_duplicates(self):
-        state = initial_state()
-        for _ in range(2):
-            state = take(state, facts=["The bridge is down."])
-        self.assertEqual(state.facts, ("The bridge is down.",))
+    def test_current_values_replace_previous_values_by_key(self):
+        state = take(self.state, changes=[
+            {"key": "parcel.holder", "value": "player", "known_by": ["player"]}
+        ])
+        facts = {fact.key: fact for fact in state.facts}
+        self.assertEqual(facts["parcel.holder"].value, "player")
+        self.assertNotIn("keeper", facts["parcel.holder"].known_by)
+        self.assertEqual(self.state.facts[0].value, "keeper")
 
-    def test_only_recent_turns_are_kept(self):
-        state = initial_state()
+    def test_expansion_is_persistent_but_discovery_and_action_reset(self):
+        state = take(self.state,
+                     expansions=[{"key": "place.ledge", "value": "A low ledge.", "known_by": []}],
+                     observations=[{"observer": "keeper", "fact_key": "place.ledge"},
+                                   {"observer": "player", "fact_key": "place.ledge"}],
+                     changes=[{"key": "parcel.holder", "value": "player", "known_by": ["player"]}],
+                     memories=["You found a ledge."])
+        state = take(state, restart=True)
+        facts = {fact.key: fact for fact in state.facts}
+        self.assertEqual((state.loop, state.turn), (2, 0))
+        self.assertEqual(facts["parcel.holder"].value, "keeper")
+        self.assertEqual(facts["place.ledge"].known_by, ())
+        self.assertIn({"loop": 1, "text": "You found a ledge."},
+                      [memory.to_dict() for memory in state.memories])
+
+    def test_experienced_events_survive_even_without_model_memory_notes(self):
+        state = take(self.state, events=[
+            {"text": "The keeper refuses.", "observers": ["player"]},
+            {"text": "A secret signal goes out.", "observers": ["keeper"]},
+        ])
+        state = take(state, restart=True)
+        self.assertIn("The keeper refuses.", str(state.memories))
+        self.assertNotIn("secret signal", str(state.memories))
+
+    def test_private_knowledge_is_withheld_until_observed(self):
+        context = self.state.to_agent_context(FOX, PREPARED.player, "do", "look", PREPARED)
+        before = writer_context(context, ruling())
+        self.assertNotIn("hidden-password", str(before))
+        after = writer_context(context, ruling(observations=[
+            {"observer": "player", "fact_key": "keeper.secret"}
+        ]))
+        self.assertIn("hidden-password", str(after))
+        self.assertNotIn("hidden-password", str(self.state.to_wire()))
+
+    def test_offscreen_events_stay_in_private_audit(self):
+        judged = ruling(events=[
+            {"text": "The keeper turns away.", "observers": ["player"]},
+            {"text": "A hidden signal goes out.", "observers": ["keeper"]},
+        ])
+        context = self.state.to_agent_context(FOX, PREPARED.player, "do", "wait", PREPARED)
+        self.assertNotIn("hidden signal", str(writer_context(context, judged)))
+        state = apply_turn(self.state, "do", "wait", judged, Narration("The keeper turns."))
+        self.assertIn("hidden signal", str(state.turns[0].to_dict(private=True)))
+        self.assertNotIn("hidden signal", str(state.turns[0].to_dict()))
+
+    def test_invalid_updates_never_change_state(self):
+        invalid = [
+            {"expansions": [{"key": "parcel.holder", "value": "new", "known_by": []}]},
+            {"expansions": [{"key": "new", "value": "new", "known_by": ["player"]}]},
+            {"changes": [{"key": "world.limit", "value": "Flight", "known_by": []}]},
+            {"observations": [{"observer": "player", "fact_key": "absent"}]},
+        ]
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(RulingError):
+                take(self.state, **payload)
+        self.assertEqual(self.state.turn, 0)
+
+    def test_return_writer_sees_reset_values_and_new_memory(self):
+        state = take(self.state, changes=[
+            {"key": "parcel.holder", "value": "player", "known_by": ["player"]}
+        ])
+        context = state.to_agent_context(FOX, PREPARED.player, "do", "wait", PREPARED)
+        view = writer_context(context, ruling(restart=True, memories=["You held the parcel."]))
+        holder = next(item for item in view["visible_facts"] if item["key"] == "parcel.holder")
+        self.assertEqual(holder["value"], "keeper")
+        self.assertEqual(view["memories"][-1]["text"], "You held the parcel.")
+
+    def test_full_turn_audit_outlives_recent_context_window(self):
+        state = self.state
         for index in range(MEMORY_TURNS + 3):
-            state = take(state, text=f"line {index}")
-        self.assertEqual(len(state.turns), MEMORY_TURNS)
-        self.assertEqual(state.turn, MEMORY_TURNS + 3)
-        self.assertEqual(state.turns[-1].player_input, f"line {MEMORY_TURNS + 2}")
+            state = take(state, text=str(index))
+        self.assertEqual(len(state.turns), MEMORY_TURNS + 3)
+        context = state.to_agent_context(FOX, PREPARED.player, "do", "wait")
+        self.assertEqual(len(context["recent_turns"]), MEMORY_TURNS)
+        self.assertEqual(context["recent_turns"][0]["text"], "3")
+        self.assertNotIn("ruling", context["recent_turns"][0])
 
-    def test_rejects_an_unknown_input_type(self):
+    def test_wire_contract_is_unchanged(self):
+        self.assertEqual(take(self.state).to_wire(),
+                         {"language": "en", "loop": 1, "turn": 1, "ended": False})
+
+    def test_ending_stops_play_and_unknown_input_is_rejected(self):
+        with self.assertRaises(RulingError):
+            take(take(self.state, ending=True))
         with self.assertRaises(ValueError):
-            apply_turn(initial_state(), "shout", "hey", ruling(), narration())
-
-    def test_wire_carries_the_language_the_loop_and_the_turn(self):
-        wire = take(initial_state("en")).to_wire()
-        self.assertEqual(wire, {"language": "en", "loop": 1, "turn": 1, "ended": False})
-
-
-class ContextTests(unittest.TestCase):
-    def test_context_gives_the_model_the_case_the_state_and_the_action(self):
-        state = take(initial_state("zh"), text="走开")
-        context = state.to_agent_context(FOX, "the fox", "say", "走开")
-        self.assertEqual(context["case"]["player"], "the fox")
-        self.assertEqual(context["state"]["language"], "zh")
-        self.assertEqual(context["state"]["facts"], [])
-        self.assertEqual(context["action"], {"type": "say", "text": "走开"})
-        self.assertEqual(len(context["recent_turns"]), 1)
-        self.assertNotIn("meters", context["state"])
-        self.assertNotIn("clock", context["state"])
-
-
-class LoopTests(unittest.TestCase):
-    def test_a_restart_returns_to_the_same_morning_but_keeps_memory(self):
-        state = take(initial_state(), text="first")
-        state = take(state, text="second")
-        state = take(state, text="third", restart=True)
-        self.assertEqual(state.loop, 2)
-        self.assertEqual(state.turn, 0)
-        self.assertEqual(len(state.turns), 3)
-        self.assertEqual(state.turns[-1].loop, 1)
-
-    def test_an_ending_closes_the_story(self):
-        state = take(initial_state(), ending=True)
-        self.assertTrue(state.ended)
-        with self.assertRaises(RulingError):
-            take(state)
-
-    def test_restart_and_ending_cannot_both_be_true(self):
-        with self.assertRaises(RulingError):
-            ruling(restart=True, ending=True)
-
-    def test_flags_must_be_booleans(self):
-        with self.assertRaises(RulingError):
-            Ruling.from_dict({"outcome": "partial", "scene": "x", "restart": "yes"})
-
-    def test_a_plain_turn_is_neither(self):
-        state = take(initial_state())
-        self.assertFalse(state.ended)
-        self.assertEqual((state.loop, state.turn), (1, 1))
+            apply_turn(self.state, "shout", "hey", ruling(), Narration("You act."))
 
 
 if __name__ == "__main__":

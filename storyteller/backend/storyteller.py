@@ -2,9 +2,8 @@
 
 Three agents, three skills, one direction:
 
-1. **understand** reads the original story once and derives the case from it —
-   the player's role, the canon, and the opening passage. The result is cached
-   beside the case, so it is paid for once per language.
+1. **understand** prepares a source-grounded story space; the writer renders its
+   opening. Both results are cached beside the case, once per language and inputs.
 2. **judge** decides what the player's line changes.
 3. **write** turns that ruling into the visible passage.
 
@@ -14,12 +13,15 @@ The first step runs as its own LangGraph; the last two run as the turn graph.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any
 
 from backend.case import Case
 from backend.graph import build_turn_graph, build_understanding_graph
 from backend.model import ChatModel
-from backend.session import InputType, Narration, Ruling, RulingError, StoryState
+from backend.session import (
+    InputType, Narration, Ruling, RulingError, StoryState, validate_ruling, writer_context,
+)
 from backend.understanding import (
     Understanding,
     UnderstandingCache,
@@ -27,9 +29,14 @@ from backend.understanding import (
     source_digest,
 )
 
+# How a session got its understanding: the model just ran, or the case was reused.
+UNDERSTANDING_DERIVED = "derived"
+UNDERSTANDING_REUSED = "cached"
+
 UNDERSTAND_TASK = (
-    "Read the original story and return the case object only: player, canon, opening."
+    "Read the original story and return the case object only: player, canon, opening, space."
 )
+OPENING_TASK = "Render the opening seed for task opening. Return narration and hints only."
 JUDGE_TASK = (
     "You are the judge for this turn. Decide what the action changes and return "
     "the ruling object only."
@@ -47,9 +54,9 @@ class Storyteller:
         self.case = case
         self.model = model or ChatModel()
         self.cache = UnderstandingCache(case.directory)
-        self.understander = build_understanding_graph(self.understand)
+        self.understander = build_understanding_graph(self.understand, self.write_opening)
         self.graph = build_turn_graph(self.judge, self.write)
-        self._understood: dict[str, Understanding] = {}
+        self._understood: dict[str, tuple[str, Understanding]] = {}
 
     @property
     def configured(self) -> bool:
@@ -57,19 +64,44 @@ class Storyteller:
 
     def understanding(self, language: str) -> Understanding:
         """Derive the case from the tale once per language, then reuse it."""
-        if language in self._understood:
-            return self._understood[language]
+        return self.understanding_with_source(language)[0]
+
+    def understanding_with_source(self, language: str) -> tuple[Understanding, str]:
+        """The understanding, plus how this call got it.
+
+        The second element is ``UNDERSTANDING_DERIVED`` when the understander
+        just prepared the space and opening (two calls), and ``UNDERSTANDING_REUSED``
+        when an earlier derivation — in memory or beside the case — was reused.
+        """
         source = self.case.source(language)
-        digest = source_digest(source)
+        # Include every preparation input, not credentials. A skill edit must take
+        # effect even when the original tale has not changed.
+        digest = source_digest(json.dumps({
+            "source": source, "language": language,
+            "understand": self.case.understand, "writer": self.case.writer,
+            "tasks": [UNDERSTAND_TASK, OPENING_TASK],
+            "model": getattr(self.model, "model", type(self.model).__name__),
+            "endpoint": getattr(self.model, "base_url", "stub"),
+        }, ensure_ascii=False, sort_keys=True))
+        if language in self._understood and self._understood[language][0] == digest:
+            return self._understood[language][1], UNDERSTANDING_REUSED
         understanding = self.cache.read(language, digest)
         if understanding is None:
             result = self.understander.invoke(
-                {"prompt": self.case.understand_prompt(language), "source": source}
+                {"prompt": self.case.understand_prompt(language), "source": source,
+                 "language": language}
             )
             understanding = result["understanding"]
             self.cache.write(language, digest, understanding)
-        self._understood[language] = understanding
-        return understanding
+            origin = UNDERSTANDING_DERIVED
+        else:
+            origin = UNDERSTANDING_REUSED
+        try:
+            understanding.validate_source(source)
+        except UnderstandingError as error:
+            raise RulingError(str(error)) from error
+        self._understood[language] = (digest, understanding)
+        return understanding, origin
 
     def opening(self, language: str) -> str:
         return self.understanding(language).opening
@@ -86,7 +118,7 @@ class Storyteller:
                 "judge_prompt": self.case.judge_prompt(state.language, understanding),
                 "writer_prompt": self.case.writer_prompt(state.language, understanding),
                 "context": state.to_agent_context(
-                    self.case, understanding.player, input_type, text
+                    self.case, understanding.player, input_type, text, understanding
                 ),
             }
         )
@@ -96,23 +128,40 @@ class Storyteller:
         payload = self.model.complete_json(
             f"{prompt}\n\n---\n\n{UNDERSTAND_TASK}",
             "The original story:\n\n" + source,
-            max_tokens=3000,
+            max_tokens=5500,
             temperature=0.4,
         )
         try:
-            return Understanding.from_dict(payload)
+            understanding = Understanding.from_dict(payload)
+            understanding.validate_source(source)
+            return understanding
         except UnderstandingError as error:
             raise RulingError(f"Understander returned an unusable case: {error}") from error
+
+    def write_opening(self, understanding: Understanding, language: str) -> Understanding:
+        payload = self.model.complete_json(
+            self.case.writer_prompt(language, understanding) + "\n\n" + OPENING_TASK,
+            "Opening input:\n" + json.dumps({
+                "task": "opening", "language": language,
+                "opening_seed": understanding.opening,
+                "visible_facts": [fact.to_dict() for fact in understanding.space.initial_facts
+                                  if "player" in fact.known_by],
+            }, ensure_ascii=False), max_tokens=1200, temperature=0.8,
+        )
+        narration = Narration.from_dict(payload)
+        return replace(understanding, opening=narration.text)
 
     def judge(self, prompt: str, context: dict[str, Any]) -> Ruling:
         payload = self.model.complete_json(
             f"{prompt}\n\n---\n\n{JUDGE_TASK}",
             "Turn input:\n" + json.dumps(context, ensure_ascii=False),
-            max_tokens=700,
+            max_tokens=2400,
             temperature=0.2,
         )
         try:
-            return Ruling.from_dict(payload)
+            ruling = Ruling.from_dict(payload)
+            validate_ruling(context, ruling)
+            return ruling
         except RulingError as error:
             raise RulingError(f"Judge returned an unusable ruling: {error}") from error
 
@@ -120,8 +169,8 @@ class Storyteller:
         payload = self.model.complete_json(
             f"{prompt}\n\n---\n\n{WRITER_TASK}",
             "Turn input with the final ruling:\n"
-            + json.dumps({**context, "ruling": ruling.to_dict()}, ensure_ascii=False),
-            max_tokens=900,
+            + json.dumps(writer_context(context, ruling), ensure_ascii=False),
+            max_tokens=1200,
             temperature=0.8,
         )
         try:

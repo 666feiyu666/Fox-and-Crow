@@ -18,6 +18,11 @@
       placeholderDo: "One action you attempt…",
       send: "Send",
       thinking: "The storyteller is thinking…",
+      understandingTitle: "The understander is reading this case…",
+      understandingBody:
+        "It reads the original tale you passed in and derives who you are, the world, and the opening.",
+      understandingSlow: "The first pass reads the whole source, so this can take a moment.",
+      understandingReused: "Opening the story…",
       tryNext: "Could try",
       error: "The story could not continue. Try again.",
       note: "Nothing is scripted. Every line you write is answered by the storyteller.",
@@ -38,6 +43,10 @@
       placeholderDo: "你尝试一个动作……",
       send: "继续",
       thinking: "讲故事的人正在想……",
+      understandingTitle: "understander 正在读你传入的这个故事……",
+      understandingBody: "它读你传入的原故事，推导出你扮演谁、世界是什么样，以及开场。",
+      understandingSlow: "第一次要通读原文，可能要等一会儿。",
+      understandingReused: "正在打开这个故事……",
       tryNext: "可以试试",
       error: "故事暂时无法继续，请再试一次。",
       note: "没有任何预写剧本。你写的每一句，都会由讲故事的人接着讲下去。",
@@ -68,6 +77,8 @@
   let loop = 1;
   let turn = 0;
   let ended = false;
+  const derivedLanguages = new Set();
+  const UNDERSTANDING_SLOW_MS = 2500;
 
   function t(key, vars) {
     const template = I18N[language][key] ?? I18N.en[key] ?? key;
@@ -161,6 +172,26 @@
     article.appendChild(body);
   }
 
+  function addUnderstandingNotice(language_) {
+    const article = addEntry("understanding");
+    const derived = derivedLanguages.has(language_);
+    const heading = document.createElement("p");
+    heading.className = "understanding-heading";
+    heading.textContent = t(derived ? "understandingReused" : "understandingTitle");
+    article.appendChild(heading);
+    if (derived) {
+      return { article, slowLine: null };
+    }
+    const body = document.createElement("p");
+    body.textContent = t("understandingBody");
+    const slowLine = document.createElement("p");
+    slowLine.className = "understanding-slow";
+    slowLine.textContent = t("understandingSlow");
+    slowLine.hidden = true;
+    article.append(body, slowLine);
+    return { article, slowLine };
+  }
+
   function addAction(type, text) {
     const article = addEntry("turn");
     const line = document.createElement("p");
@@ -228,23 +259,37 @@
   }
 
   async function start() {
+    const requested = language;
     log.replaceChildren();
     hints.replaceChildren();
     turn = 0;
     setMessage(null);
     setBusy(true);
+    const notice = addUnderstandingNotice(requested);
+    const slowTimer = notice.slowLine
+      ? setTimeout(() => {
+          notice.slowLine.hidden = false;
+        }, UNDERSTANDING_SLOW_MS)
+      : null;
     try {
-      const data = await request("/api/session", { language });
+      const data = await request("/api/session", { language: requested });
       sessionId = data.sessionId;
       caseInfo = data.case;
       loop = data.playerState.loop;
       turn = data.playerState.turn;
       ended = data.playerState.ended;
+      if (data.understandingSource === "derived") {
+        derivedLanguages.add(requested);
+      }
       addOpening(data.opening);
       paintChrome();
     } catch (error) {
       setMessage(error.key || null, error.message || t("error"));
     } finally {
+      if (slowTimer !== null) {
+        clearTimeout(slowTimer);
+      }
+      notice.article.remove();
       setBusy(false);
     }
     actionBox.focus();

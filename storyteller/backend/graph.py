@@ -1,11 +1,10 @@
 """The graphs: understanding the tale, then judging and writing each turn.
 
-    understanding   START -> understand -> END
+    understanding   START -> understand -> write_opening -> END
     turn            START -> judge -> write -> END
 
-The understander runs once per case and language; its result is cached, so the
-turn graph never pays for it. Both graphs are pure orchestration — they hold no
-story knowledge and no rules.
+Preparation runs once per case, language and input fingerprint; its completed
+result is cached. Both graphs are orchestration, without case-specific rules.
 """
 
 from __future__ import annotations
@@ -18,6 +17,7 @@ from backend.session import Narration, Ruling
 from backend.understanding import Understanding
 
 UnderstandFn = Callable[[str, str], Understanding]
+OpeningFn = Callable[[Understanding, str], Understanding]
 JudgeFn = Callable[[str, dict[str, Any]], Ruling]
 WriteFn = Callable[[str, dict[str, Any], Ruling], Narration]
 
@@ -27,6 +27,7 @@ class UnderstandingState(TypedDict, total=False):
 
     prompt: str
     source: str
+    language: str
     understanding: Understanding
 
 
@@ -40,8 +41,8 @@ class TurnState(TypedDict, total=False):
     narration: Narration
 
 
-def build_understanding_graph(understand: UnderstandFn):
-    """Compile the single-node graph that derives the case from the tale."""
+def build_understanding_graph(understand: UnderstandFn, opening: OpeningFn | None = None):
+    """Prepare the space, then render its opening with the same writer craft."""
 
     def understand_node(state: UnderstandingState) -> dict[str, Any]:
         return {
@@ -51,7 +52,15 @@ def build_understanding_graph(understand: UnderstandFn):
     graph = StateGraph(UnderstandingState)
     graph.add_node("understand", understand_node)
     graph.add_edge(START, "understand")
-    graph.add_edge("understand", END)
+    if opening is None:
+        graph.add_edge("understand", END)
+    else:
+        def opening_node(state: UnderstandingState) -> dict[str, Any]:
+            return {"understanding": opening(state["understanding"], state["language"])}
+
+        graph.add_node("write_opening", opening_node)
+        graph.add_edge("understand", "write_opening")
+        graph.add_edge("write_opening", END)
     return graph.compile()
 
 
