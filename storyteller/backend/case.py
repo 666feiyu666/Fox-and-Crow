@@ -1,8 +1,8 @@
-"""Case loading: the world, the opening, the player, and the two agent skills.
+"""Case loading: the original tale, its title, and the three agent skills.
 
-A case is data only — canon, an opening passage, and the character the player
-plays, each written in every supported language. The engine adds a judge, a
-writer, and a page; it adds no rules of its own.
+A case ships data only — the story it is built from, in every supported language,
+and a title. What the player is, what the world is, and what they read first are
+derived from that tale by the understander and cached beside the case.
 """
 
 from __future__ import annotations
@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from backend.understanding import Understanding
+
 LANGUAGES = ("en", "zh")
-STAGES = ("judge", "writer")
+STAGES = ("understand", "judge", "writer")
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
 
@@ -66,10 +68,10 @@ def _skill(skills: Path, stage: str) -> str:
 @dataclass(frozen=True)
 class Case:
     id: str
+    directory: Path
     titles: Mapping[str, str]
-    players: Mapping[str, str]
-    worlds: Mapping[str, str]
-    openings: Mapping[str, str]
+    sources: Mapping[str, str]
+    understand: str
     judge: str
     writer: str
 
@@ -87,10 +89,13 @@ class Case:
 
         return cls(
             id=str(raw.get("id") or directory.name),
+            directory=directory,
             titles=_by_language(raw.get("title"), "title"),
-            players=_by_language(raw.get("player"), "player"),
-            worlds={language: _document(directory, "world", language) for language in LANGUAGES},
-            openings={language: _document(directory, "opening", language) for language in LANGUAGES},
+            sources={
+                language: _document(directory, "source", language)
+                for language in LANGUAGES
+            },
+            understand=_skill(skills, "understand"),
             judge=_skill(skills, "judge"),
             writer=_skill(skills, "writer"),
         )
@@ -98,25 +103,29 @@ class Case:
     def title(self, language: str) -> str:
         return self.titles.get(language) or self.titles["en"]
 
-    def player(self, language: str) -> str:
-        return self.players.get(language) or self.players["en"]
+    def source(self, language: str) -> str:
+        return self.sources.get(language) or self.sources["en"]
 
-    def world(self, language: str) -> str:
-        return self.worlds.get(language) or self.worlds["en"]
-
-    def opening(self, language: str) -> str:
-        return self.openings.get(language) or self.openings["en"]
-
-    def _prompt(self, instructions: str, language: str) -> str:
+    def understand_prompt(self, language: str) -> str:
         brief = (
-            f"The player plays {self.player(language)}.\n"
+            f"The story language is {language}: write the player, the canon, and the "
+            f"opening in {language}, and keep every name as the tale gives it."
+        )
+        return (
+            f"{self.understand}\n\n---\n\n{brief}\n\n---\n\n"
+            f"# The original story\n\n{self.source(language)}"
+        )
+
+    def _stage_prompt(self, instructions: str, language: str, understanding: Understanding) -> str:
+        brief = (
+            f"The player plays {understanding.player}.\n"
             f"The story language is {language}: write everything in {language}, and "
             f"keep every name as this world writes it."
         )
-        return f"{instructions}\n\n---\n\n{brief}\n\n---\n\n{self.world(language)}"
+        return f"{instructions}\n\n---\n\n{brief}\n\n---\n\n{understanding.canon}"
 
-    def judge_prompt(self, language: str) -> str:
-        return self._prompt(self.judge, language)
+    def judge_prompt(self, language: str, understanding: Understanding) -> str:
+        return self._stage_prompt(self.judge, language, understanding)
 
-    def writer_prompt(self, language: str) -> str:
-        return self._prompt(self.writer, language)
+    def writer_prompt(self, language: str, understanding: Understanding) -> str:
+        return self._stage_prompt(self.writer, language, understanding)

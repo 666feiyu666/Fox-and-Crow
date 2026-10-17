@@ -1,12 +1,11 @@
-"""The turn graph: judgement first, writing second, wired with LangGraph.
+"""The graphs: understanding the tale, then judging and writing each turn.
 
-Two agents, two skills, one direction:
+    understanding   START -> understand -> END
+    turn            START -> judge -> write -> END
 
-    START -> judge -> write -> END
-
-The judge reads the world and the player's line and decides what changes. The
-writer receives that ruling as final and turns it into the visible passage. The
-graph is pure orchestration: it holds no story knowledge and no rules.
+The understander runs once per case and language; its result is cached, so the
+turn graph never pays for it. Both graphs are pure orchestration — they hold no
+story knowledge and no rules.
 """
 
 from __future__ import annotations
@@ -16,19 +15,44 @@ from typing import Any, Callable, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from backend.session import Narration, Ruling
+from backend.understanding import Understanding
 
+UnderstandFn = Callable[[str, str], Understanding]
 JudgeFn = Callable[[str, dict[str, Any]], Ruling]
 WriteFn = Callable[[str, dict[str, Any], Ruling], Narration]
 
 
+class UnderstandingState(TypedDict, total=False):
+    """What the understanding graph carries."""
+
+    prompt: str
+    source: str
+    understanding: Understanding
+
+
 class TurnState(TypedDict, total=False):
-    """What flows between the two nodes."""
+    """What the turn graph carries."""
 
     judge_prompt: str
     writer_prompt: str
     context: dict[str, Any]
     ruling: Ruling
     narration: Narration
+
+
+def build_understanding_graph(understand: UnderstandFn):
+    """Compile the single-node graph that derives the case from the tale."""
+
+    def understand_node(state: UnderstandingState) -> dict[str, Any]:
+        return {
+            "understanding": understand(state["prompt"], state["source"])
+        }
+
+    graph = StateGraph(UnderstandingState)
+    graph.add_node("understand", understand_node)
+    graph.add_edge(START, "understand")
+    graph.add_edge("understand", END)
+    return graph.compile()
 
 
 def build_turn_graph(judge: JudgeFn, write: WriteFn):

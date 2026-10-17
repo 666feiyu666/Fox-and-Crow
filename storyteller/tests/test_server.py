@@ -1,5 +1,6 @@
 import http.client
 import json
+import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -8,10 +9,17 @@ from backend.case import Case
 from backend.model import ConfigurationError, ModelError
 from backend.server import SessionRegistry, create_server
 from backend.storyteller import Storyteller
+from backend.understanding import UnderstandingCache
 
 CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
 CINDERELLA = Case.load(CASE_ROOT / "cinderella")
+
+UNDERSTANDING = {
+    "player": "the fox",
+    "canon": "# World\n\n## Premise\nA forest.",
+    "opening": "Cold moss under your paws.",
+}
 
 
 class StubModel:
@@ -26,6 +34,8 @@ class StubModel:
         self.turns = 0
 
     def complete_json(self, system, user, **kwargs):
+        if "case object only" in system:
+            return UNDERSTANDING
         if self.fail is not None:
             raise self.fail
         if "judge for this turn" in system:
@@ -47,8 +57,11 @@ class ServerTestBase(unittest.TestCase):
         return StubModel()
 
     def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
         self.model = self.make_model()
         self.storyteller = Storyteller(self.case, model=self.model)
+        self.storyteller.cache = UnderstandingCache(Path(self.tempdir.name))
         self.sessions = SessionRegistry()
         self.server = create_server(
             port=0,
@@ -102,10 +115,10 @@ class BasicServerTests(ServerTestBase):
 
     def test_session_returns_the_story_the_role_and_the_opening(self):
         payload = self.new_session("zh")
-        self.assertEqual(payload["opening"], FOX.opening("zh"))
+        self.assertEqual(payload["opening"], UNDERSTANDING["opening"])
         self.assertEqual(payload["case"]["id"], FOX.id)
         self.assertEqual(payload["case"]["title"]["zh"], "狐狸与乌鸦")
-        self.assertEqual(payload["case"]["player"]["zh"], "狐狸")
+        self.assertEqual(payload["case"]["player"], UNDERSTANDING["player"])
         self.assertEqual(
             payload["playerState"],
             {"language": "zh", "loop": 1, "turn": 0, "ended": False},
@@ -166,7 +179,7 @@ class CinderellaServerTests(ServerTestBase):
     def test_second_case_serves_its_own_story(self):
         session = self.new_session("zh")
         self.assertEqual(session["case"]["title"]["zh"], "灰姑娘")
-        self.assertEqual(session["opening"], CINDERELLA.opening("zh"))
+        self.assertEqual(session["case"]["id"], "cinderella")
 
 
 class LoopServerTests(ServerTestBase):

@@ -162,6 +162,23 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         if language not in LANGUAGES:
             self._send_json(400, {"error": "language must be en or zh."})
             return
+        try:
+            understanding = self.storyteller.understanding(language)
+        except ConfigurationError:
+            self._send_json(
+                503, {"error": "The Storyteller is not configured yet. Try again later."}
+            )
+            return
+        except ModelError as error:
+            self._send_model_error(error)
+            return
+        except RulingError as error:
+            self.log_error("Understander output rejected: %s", error)
+            self._send_json(
+                502, {"error": "The Storyteller could not read this story. Try again."}
+            )
+            return
+
         session_id, state = self.sessions.create(language)
         self._send_json(
             201,
@@ -170,9 +187,9 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                 "case": {
                     "id": self.case.id,
                     "title": dict(self.case.titles),
-                    "player": dict(self.case.players),
+                    "player": understanding.player,
                 },
-                "opening": self.case.opening(language),
+                "opening": understanding.opening,
                 "playerState": state.to_wire(),
             },
         )

@@ -1,7 +1,8 @@
 import unittest
 
-from backend.graph import build_turn_graph
+from backend.graph import build_turn_graph, build_understanding_graph
 from backend.session import Narration, Ruling
+from backend.understanding import Understanding
 
 
 class GraphTests(unittest.TestCase):
@@ -61,6 +62,24 @@ class GraphTests(unittest.TestCase):
             graph.invoke(
                 {"judge_prompt": "J", "writer_prompt": "W", "context": {"action": {"type": "do", "text": "x"}}}
             )
+
+
+class UnderstandingGraphTests(unittest.TestCase):
+    def test_understand_is_a_single_node_that_returns_the_case(self):
+        calls = []
+
+        def understand(prompt, source):
+            calls.append((prompt, source))
+            return Understanding.from_dict(
+                {"player": "the fox", "canon": "# World", "opening": "Cold moss."}
+            )
+
+        graph = build_understanding_graph(understand)
+        result = graph.invoke({"prompt": "READ-THE-TALE", "source": "a tale"})
+
+        self.assertEqual(calls, [("READ-THE-TALE", "a tale")])
+        self.assertEqual(result["understanding"].player, "the fox")
+        self.assertEqual(result["understanding"].opening, "Cold moss.")
 
 
 if __name__ == "__main__":

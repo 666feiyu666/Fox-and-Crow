@@ -104,7 +104,7 @@
     }
     const title = caseText(caseInfo.title);
     storyTitle.textContent = title;
-    subtitle.textContent = t("youAre", { name: caseText(caseInfo.player) });
+    subtitle.textContent = t("youAre", { name: caseInfo.player || "" });
     document.title = title;
   }
 

@@ -1,23 +1,29 @@
 # Storyteller
 
-A small engine for playable stories told by two LLM agents. The player is given an
-opening passage and a character; they write one line or one action at a time; a
-**judge** agent decides what that changes in the world, and a **writer** agent
-turns that decision into the passage they read. The two run as a LangGraph state
-machine, one turn at a time.
+A small engine for playable stories told by three LLM agents. A case ships only the
+original tale.
 
-There is no branching script and no rulebook the engine enforces on top of the
-world the case describes.
+1. **understand** reads that tale once per language and derives the case from it —
+   the player's role, the world canon, and the opening passage — cached beside the
+   case so it can be read, reviewed, and edited.
+2. **judge** decides what the player's line changes in that world.
+3. **write** turns that ruling into the passage the player reads.
+
+They run as LangGraph state machines: one graph for understanding, one for the
+turn. There is no branching script and no rulebook the engine enforces on top of
+the world the tale implies.
 
 ```text
 storyteller/
-├── skills/judge/SKILL.md    the judge: weighs the action, returns the ruling
-├── skills/writer/SKILL.md   the writer: turns the ruling into visible prose
-├── backend/graph.py         the turn graph (LangGraph): judge -> write
-├── backend/                 case loading, story state, model client, HTTP
-├── web/                     the playable page (no framework, no Twine)
-├── tests/                   offline tests for the graph, the agents, the cases
-└── docs/                    architecture notes
+├── skills/understand/SKILL.md  the understander: reads the tale, derives the case
+├── skills/judge/SKILL.md       the judge: weighs the action, returns the ruling
+├── skills/writer/SKILL.md      the writer: turns the ruling into visible prose
+├── backend/graph.py            the graphs (LangGraph): understand, judge -> write
+├── backend/understanding.py    the derived case and its on-disk cache
+├── backend/                    case loading, story state, model client, HTTP
+├── web/                        the playable page (no framework, no Twine)
+├── tests/                      offline tests for the graphs, the agents, the cases
+└── docs/                       architecture notes
 ```
 
 ## Run a case
@@ -32,9 +38,12 @@ python backend/server.py --case fox-and-crow
 python backend/server.py --case cinderella
 ```
 
+The first session in a language makes one extra model call: the understander reads
+the tale and writes `cases/<case>/.generated/understanding.<lang>.json`. Later
+sessions reuse it. Delete that file — or edit the tale — to have it derived again.
+
 `--case` takes a directory name under `cases/` or a path to a case directory;
-`STORYTELLER_CASE` is the fallback. One process plays one case. Python 3.13 and
-LangGraph.
+`STORYTELLER_CASE` is the fallback. One process plays one case.
 
 ## Test
 
@@ -49,32 +58,31 @@ The tests use a stub model: they never call the API and never spend credit.
 
 A story is a loop, and it ends only when the loop is broken. Walking the original
 story to its usual end leads back to the first morning; only a break ends it, and
-what counts as a break is the storyteller's judgement, guided by that case's canon.
+what counts as a break is the judge's decision, guided by the derived canon.
 Nothing in the engine scores it, and the page never tells the player the condition.
 
 ## What a case gives the agent
 
 | File | Content |
 | --- | --- |
-| `case.json` | Story id, bilingual title, and the character the player plays |
-| `world.en.md`, `world.zh.md` | The canon: cast, places, rules, prohibitions, and where the story can go |
-| `opening.en.md`, `opening.zh.md` | The first passage the player reads |
+| `case.json` | Story id and bilingual title |
+| `source.en.md`, `source.zh.md` | The original tale, which is all the agents read |
 
-That is the whole contract. There are no meters, clocks, or ending thresholds: the
-storyteller decides what each turn changes, and the runtime only remembers the
-turns and the facts it declares.
+Everything else — the player's role, the canon, the opening passage — is derived
+from the tale on first use and cached under `cases/<case>/.generated/`. That cache
+is plain JSON: read it, edit it, or delete it to force a fresh reading.
 
 ## Language
 
-A session is played in one language (`en` or `zh`). The opening, every narration,
-the hints, and the storyteller's own working notes are all written in that
-language, and the model is given the canon written in it too. Switching language
-in the page restarts the story in the other language.
+A session is played in one language (`en` or `zh`). The tale is read and the case
+derived in that language, so the opening, every narration, the hints, and the
+judge's own notes are all in it. Switching language in the page restarts the story
+in the other language, reusing that language's derivation.
 
 ## Read next
 
 - `ARCHITECTURE.md` — how a turn flows, and what the runtime actually does.
-- `docs/agent-skills.md` — the judge and the writer, and how to change them.
+- `docs/agent-skills.md` — the three agents and how to change them.
 - `../cases/<case>/README.md` — each story and what it is for.
 
 For a hosted test, deploy the service described by `../render.yaml`: its root

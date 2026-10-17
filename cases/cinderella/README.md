@@ -22,26 +22,24 @@ the storyteller's judgement, not a rule printed here: Cinderella has to change h
 situation by her own action and be known as a person rather than a shoe size. The
 page will never tell you when you are close.
 
-## What the player is given
+## What the case ships
 
-- **Opening** — `opening.en.md` / `opening.zh.md`: the first passage, before the
-  player has done anything.
-- **Role** — Cinderella (`Cinderella` / `灰姑娘`), named in `case.json`.
-- **World** — `world.en.md` / `world.zh.md`: the canon the storyteller judges
-  against — the household, the palace, the magic and its midnight limit, what is
-  already true, and what a satisfying ending would touch on.
+- **The tale** — `source.en.md` / `source.zh.md`: the Perrault story, retold in
+  each language. This is the only authored story content.
+- **Id and title** — `case.json`.
+
+The player's role, the world canon, and the opening passage are not written here.
+The understander derives them from the tale on first use and caches them in
+`.generated/`, where you can read them, correct them, or delete them to force a
+fresh reading.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `case.json` | Story id, bilingual title, and the character the player plays |
-| `world.en.md`, `world.zh.md` | The same canon written in each language |
-| `opening.en.md`, `opening.zh.md` | The first passage in each language |
-
-Every file exists in both languages, and a session picks one: the opening,
-narration, hints, and the storyteller's own notes are all written in that
-language, with no mixing.
+| `case.json` | Story id and bilingual title |
+| `source.en.md`, `source.zh.md` | The original tale, the only thing the agents read |
+| `.generated/` | Derived player, canon, and opening (created on first run) |
 
 ## Run it
 

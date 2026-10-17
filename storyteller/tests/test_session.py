@@ -102,8 +102,8 @@ class TurnTests(unittest.TestCase):
 class ContextTests(unittest.TestCase):
     def test_context_gives_the_model_the_case_the_state_and_the_action(self):
         state = take(initial_state("zh"), text="走开")
-        context = state.to_agent_context(FOX, "say", "走开")
-        self.assertEqual(context["case"]["player"], "狐狸")
+        context = state.to_agent_context(FOX, "the fox", "say", "走开")
+        self.assertEqual(context["case"]["player"], "the fox")
         self.assertEqual(context["state"]["language"], "zh")
         self.assertEqual(context["state"]["facts"], [])
         self.assertEqual(context["action"], {"type": "say", "text": "走开"})

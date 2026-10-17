@@ -135,13 +135,13 @@ class StoryState:
         }
 
     def to_agent_context(
-        self, case: Case, input_type: InputType, text: str
+        self, case: Case, player: str, input_type: InputType, text: str
     ) -> dict[str, Any]:
         return {
             "case": {
                 "id": case.id,
                 "title": case.title(self.language),
-                "player": case.player(self.language),
+                "player": player,
             },
             "state": {
                 "language": self.language,

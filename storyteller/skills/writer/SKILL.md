@@ -1,5 +1,6 @@
 ---
 name: writer
+description: Write the visible passage and next-action hints from a ruling that has already been decided.
 stage: narration
 ---
 

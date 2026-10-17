@@ -1,5 +1,6 @@
 ---
 name: judge
+description: Decide what one player action changes in the story world, and return the ruling the writer will turn into prose.
 stage: judgement
 ---
 

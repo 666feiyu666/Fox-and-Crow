@@ -12,3 +12,4 @@ Presentation_SJTU
 media
 .vscode
 .reasonix/
+cases/*/.generated/
