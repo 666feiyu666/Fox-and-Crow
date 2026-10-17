@@ -1,12 +1,19 @@
 :root {
   color-scheme: light;
-  --desk: #e9e3d5;
-  --paper: #fbf8f0;
-  --ink: #15130f;
-  --dim: #6f675c;
+  --desk: #ece5d4;
+  --desk-deep: #ddd3bd;
+  --paper: #fdfbf4;
+  --ink: #17140f;
+  --dim: #6b6253;
   --moss: #2e4639;
+  --moss-deep: #22352b;
   --river: #2f5d62;
-  --rule: #cfc7b6;
+  --clay: #9a5637;
+  --gold: #ac8348;
+  --rule: #d7cfbc;
+  --rail-ink: #efe8d9;
+  --rail-dim: rgba(239, 232, 217, 0.62);
+  --rail-rule: rgba(239, 232, 217, 0.16);
 
   /* Latin faces lead each stack; CJK faces follow so han characters land on
      Songti/Kaiti while Latin text keeps a proper serif. */
@@ -21,7 +28,7 @@
 
   /* One measure for the sheet, the composer and the pager. */
   --measure: 40rem;
-  --gutter: clamp(1.1rem, 4vw, 2rem);
+  --gutter: clamp(1rem, 3.2vw, 1.8rem);
 }
 
 * {
@@ -35,10 +42,14 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--desk);
+  /* Warm light from the upper left, deepening toward the lower right. */
+  background:
+    radial-gradient(115% 75% at 10% 0%, #f5eedd 0%, rgba(245, 238, 221, 0) 58%),
+    linear-gradient(165deg, var(--desk) 0%, var(--desk-deep) 100%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--serif);
-  line-height: 1.78;
+  line-height: 1.75;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures;
   text-rendering: optimizeLegibility;
@@ -96,7 +107,7 @@ button {
   background: none;
   border: 1px solid var(--rule);
   border-radius: 0;
-  padding: 0.45rem 0.9rem;
+  padding: 0.42rem 0.85rem;
   cursor: pointer;
   white-space: nowrap;
   transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
@@ -105,6 +116,7 @@ button {
 button:hover:not(:disabled) {
   border-color: var(--moss);
   color: var(--moss);
+  background-color: rgba(46, 70, 57, 0.05);
 }
 
 button:disabled {
@@ -126,6 +138,7 @@ button.back {
   letter-spacing: 0.06em;
   color: var(--dim);
   text-decoration: none;
+  background: none;
 }
 
 a.back .icon,
@@ -144,9 +157,10 @@ a.back:hover,
 button.back:hover:not(:disabled) {
   color: var(--moss);
   border-bottom-color: var(--rule);
+  background: none;
 }
 
-/* Layout: a rail of past runs beside the page. */
+/* Layout: an inked rail of past runs beside the page. */
 
 .app {
   display: grid;
@@ -157,9 +171,11 @@ button.back:hover:not(:disabled) {
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 1.6rem;
-  padding: 2.4rem 1.25rem 1.5rem;
-  border-right: 1px solid var(--rule);
+  gap: 1.15rem;
+  padding: 1.5rem 1.15rem 1.1rem;
+  background: linear-gradient(178deg, #33503f 0%, var(--moss) 46%, var(--moss-deep) 100%);
+  border-right: 1px solid rgba(23, 20, 15, 0.22);
+  color: var(--rail-ink);
   position: sticky;
   top: 0;
   height: 100vh;
@@ -178,21 +194,22 @@ button.back:hover:not(:disabled) {
   align-items: center;
   gap: 0.42em;
   font-family: var(--kai);
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--rail-ink);
   text-decoration: none;
   letter-spacing: 0.02em;
+  transition: color 120ms ease;
 }
 
 .rail-home .icon {
   width: 1.05em;
   height: 1.05em;
-  color: var(--moss);
+  color: var(--gold);
 }
 
 .rail-home:hover {
-  color: var(--moss);
+  color: #fff;
 }
 
 .rail-toggle {
@@ -203,7 +220,8 @@ button.back:hover:not(:disabled) {
   font-family: var(--mono);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
-  color: var(--dim);
+  color: var(--rail-dim);
+  background: none;
 }
 
 .rail-toggle .icon {
@@ -211,10 +229,16 @@ button.back:hover:not(:disabled) {
   height: 1rem;
 }
 
+.rail-toggle:hover:not(:disabled) {
+  color: var(--gold);
+  border-bottom-color: var(--rail-rule);
+  background: none;
+}
+
 .rail-body {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.55rem;
   min-height: 0;
   overflow-y: auto;
 }
@@ -229,12 +253,13 @@ button.back:hover:not(:disabled) {
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--rail-dim);
 }
 
 .rail-title .icon {
   width: 1rem;
   height: 1rem;
+  color: var(--gold);
 }
 
 .rail-runs {
@@ -257,15 +282,21 @@ button.back:hover:not(:disabled) {
   flex: 1;
   min-width: 0;
   display: block;
-  padding: 0.42rem 0.5rem 0.42rem 0.55rem;
+  padding: 0.4rem 0.45rem 0.4rem 0.55rem;
   color: inherit;
   text-decoration: none;
-  border-left: 1px solid transparent;
+  border-left: 2px solid transparent;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.run-link:hover,
+.run-link:hover {
+  border-left-color: var(--rail-rule);
+  background: rgba(239, 232, 217, 0.06);
+}
+
 .run-link[aria-current="true"] {
-  border-left-color: var(--moss);
+  border-left-color: var(--gold);
+  background: rgba(239, 232, 217, 0.1);
 }
 
 .run-name {
@@ -273,19 +304,23 @@ button.back:hover:not(:disabled) {
   font-family: var(--kai);
   font-size: 0.95rem;
   line-height: 1.35;
-  color: var(--ink);
+  color: var(--rail-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.run-link[aria-current="true"] .run-name {
+  color: #fff;
+}
+
 .run-meta {
   display: block;
   font-family: var(--mono);
-  font-size: 0.66rem;
-  line-height: 1.6;
+  font-size: 0.65rem;
+  line-height: 1.55;
   letter-spacing: 0.02em;
-  color: var(--dim);
+  color: var(--rail-dim);
   font-variant-numeric: tabular-nums;
 }
 
@@ -294,7 +329,8 @@ button.back:hover:not(:disabled) {
   padding: 0.2rem 0.3rem;
   font-size: 0.8rem;
   line-height: 1;
-  color: var(--dim);
+  color: var(--rail-dim);
+  background: none;
   opacity: 0;
   transition: opacity 120ms ease, color 120ms ease;
 }
@@ -310,16 +346,17 @@ button.back:hover:not(:disabled) {
 }
 
 .run-delete:hover:not(:disabled) {
-  color: var(--river);
+  color: #e7a984;
   border-color: transparent;
+  background: none;
 }
 
 .rail-empty {
   margin: 0;
   font-family: var(--ui);
   font-size: 0.78rem;
-  line-height: 1.6;
-  color: var(--dim);
+  line-height: 1.55;
+  color: var(--rail-dim);
 }
 
 .rail-settings {
@@ -327,34 +364,37 @@ button.back:hover:not(:disabled) {
   justify-content: flex-start;
   gap: 0.5em;
   border: 0;
-  border-top: 1px solid var(--rule);
-  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--rail-rule);
+  padding: 0.8rem 0 0;
   text-align: left;
   font-family: var(--mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--rail-dim);
+  background: none;
 }
 
 .rail-settings .icon {
   width: 1rem;
   height: 1rem;
+  color: var(--gold);
 }
 
 .rail-settings:hover:not(:disabled) {
-  color: var(--moss);
-  border-color: var(--rule);
+  color: var(--rail-ink);
+  border-color: var(--rail-rule);
+  background: none;
 }
 
 .page {
   width: 100%;
   max-width: calc(var(--measure) + var(--gutter) * 2);
   margin: 0 auto;
-  padding: clamp(2rem, 4vw, 3.4rem) var(--gutter) clamp(3rem, 6vw, 4.5rem);
+  padding: clamp(1.3rem, 2.6vw, 2.2rem) var(--gutter) clamp(1.8rem, 3.4vw, 2.6rem);
   display: flex;
   flex-direction: column;
-  gap: 1.6rem;
+  gap: 1.1rem;
   z-index: 2;
 }
 
@@ -369,19 +409,20 @@ button.back:hover:not(:disabled) {
 .book {
   width: 100%;
   max-width: var(--measure);
-  min-height: clamp(24rem, 56vh, 34rem);
-  padding: clamp(2rem, 3.4vw, 3.1rem) clamp(1.3rem, 3.6vw, 3.1rem)
-    clamp(1.5rem, 2.6vw, 2.3rem);
+  min-height: clamp(19rem, 42vh, 27rem);
+  padding: clamp(1.5rem, 2.7vw, 2.4rem) clamp(1.2rem, 3vw, 2.5rem)
+    clamp(1.2rem, 2vw, 1.7rem);
   display: flex;
   flex-direction: column;
-  gap: 1.7rem;
+  gap: 1.35rem;
   background-color: var(--paper);
-  /* A faint shade along the binding edge. */
+  /* A faint shade along the binding edge, plus a tinted book edge on top. */
   background-image: linear-gradient(
     90deg,
     rgba(21, 19, 15, 0.05),
-    rgba(21, 19, 15, 0) 2.6rem
+    rgba(21, 19, 15, 0) 2.4rem
   );
+  border-top: 3px solid var(--moss);
   transform-origin: center left;
   backface-visibility: hidden;
   box-shadow:
@@ -390,7 +431,30 @@ button.back:hover:not(:disabled) {
     0 4px 0 rgba(21, 19, 15, 0.05),
     0 8px 0 -2px var(--paper),
     0 9px 0 rgba(21, 19, 15, 0.04),
-    0 22px 52px -18px rgba(21, 19, 15, 0.32);
+    0 20px 44px -18px rgba(73, 56, 30, 0.42);
+}
+
+/* Each view inks its own edge, so the shelf, the choice and the story read
+   differently at a glance. */
+
+.pick .book {
+  border-top-color: var(--river);
+}
+
+.story .book {
+  border-top-color: var(--clay);
+}
+
+/* The shelf and the choice are as tall as what they hold; only the story page
+   keeps a steady height so turning a page does not resize the sheet. */
+
+.shelf .book,
+.pick .book {
+  min-height: 0;
+}
+
+.story .book {
+  min-height: clamp(17rem, 36vh, 23rem);
 }
 
 .leaf-head {
@@ -398,7 +462,7 @@ button.back:hover:not(:disabled) {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding-bottom: 0.85rem;
+  padding-bottom: 0.7rem;
   border-bottom: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -408,16 +472,37 @@ button.back:hover:not(:disabled) {
 }
 
 .leaf-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.leaf-title::before {
+  content: "";
+  flex: none;
+  width: 0.4em;
+  height: 0.4em;
+  margin-right: 0.6em;
+  background: var(--moss);
+}
+
+.pick .leaf-title::before {
+  background: var(--river);
+}
+
+.story .leaf-title::before {
+  background: var(--clay);
+}
+
 .leaf-state {
   flex: none;
   text-align: right;
   letter-spacing: 0.08em;
+  color: var(--river);
   font-variant-numeric: tabular-nums;
 }
 
@@ -425,8 +510,8 @@ button.back:hover:not(:disabled) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  min-height: 16rem;
+  gap: 1.05rem;
+  min-height: 10rem;
 }
 
 .leaf-foot {
@@ -434,7 +519,7 @@ button.back:hover:not(:disabled) {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding-top: 0.85rem;
+  padding-top: 0.7rem;
   border-top: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -444,6 +529,7 @@ button.back:hover:not(:disabled) {
 }
 
 .leaf-gauge {
+  color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -452,7 +538,7 @@ button.back:hover:not(:disabled) {
 .book-title {
   margin: 0;
   font-family: var(--kai);
-  font-size: clamp(2rem, 4.2vw, 2.75rem);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.16;
@@ -462,18 +548,18 @@ button.back:hover:not(:disabled) {
 .book-lede {
   margin: 0;
   max-width: 31rem;
-  font-size: 0.98rem;
-  line-height: 1.85;
+  font-size: 0.96rem;
+  line-height: 1.8;
   color: var(--dim);
   text-wrap: pretty;
 }
 
 .book-quote {
-  margin: 0.3rem 0 0.4rem;
-  padding-left: 1rem;
-  border-left: 1px solid var(--rule);
-  font-size: 0.97rem;
-  line-height: 1.8;
+  margin: 0.2rem 0 0.3rem;
+  padding-left: 0.95rem;
+  border-left: 2px solid var(--gold);
+  font-size: 0.96rem;
+  line-height: 1.75;
   color: var(--dim);
 }
 
@@ -491,19 +577,26 @@ button.back:hover:not(:disabled) {
 
 .story-link {
   display: block;
-  padding: 1.4rem 0;
+  padding: 1.05rem 0.7rem;
+  margin: 0 -0.7rem;
   color: inherit;
   text-decoration: none;
+  transition: background-color 130ms ease;
 }
 
 .story-item:first-child .story-link {
-  padding-top: 0.3rem;
+  padding-top: 0.35rem;
+}
+
+.story-link:hover,
+.story-link:focus-visible {
+  background: rgba(46, 70, 57, 0.055);
 }
 
 .story-name {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.4rem;
   font-family: var(--kai);
-  font-size: clamp(1.35rem, 2.6vw, 1.6rem);
+  font-size: clamp(1.3rem, 2.4vw, 1.55rem);
   font-weight: 600;
   line-height: 1.3;
   text-wrap: balance;
@@ -511,11 +604,11 @@ button.back:hover:not(:disabled) {
 }
 
 .story-quote {
-  margin: 0 0 0.75rem;
-  padding-left: 0.9rem;
+  margin: 0 0 0.6rem;
+  padding-left: 0.85rem;
   border-left: 1px solid var(--rule);
-  font-size: 0.96rem;
-  line-height: 1.78;
+  font-size: 0.94rem;
+  line-height: 1.72;
   color: var(--dim);
   text-wrap: pretty;
 }
@@ -559,8 +652,8 @@ button.back:hover:not(:disabled) {
 .pick-languages {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-top: 0.4rem;
+  gap: 0.7rem;
+  margin-top: 0.2rem;
 }
 
 .pick-languages button {
@@ -568,13 +661,14 @@ button.back:hover:not(:disabled) {
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.65rem 1.3rem;
+  padding: 0.6rem 1.25rem;
   border-color: var(--rule);
 }
 
 .pick-languages button:hover:not(:disabled) {
-  border-color: var(--moss);
-  color: var(--moss);
+  border-color: var(--river);
+  color: var(--river);
+  background: rgba(47, 93, 98, 0.07);
 }
 
 /* The story page: bar, sheet, pager and composer all sit on one measure. */
@@ -582,7 +676,7 @@ button.back:hover:not(:disabled) {
 .story {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 0.9rem;
 }
 
 .story-bar,
@@ -612,17 +706,20 @@ footer.note {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dim);
+  background: none;
 }
 
 .story-bar button.ghost .icon {
-  width: 0.95em;
-  height: 0.95em;
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.9;
   transition: transform 320ms ease;
 }
 
 .story-bar button.ghost:hover:not(:disabled) {
-  color: var(--ink);
+  color: var(--clay);
   border-bottom-color: var(--rule);
+  background: none;
 }
 
 .story-bar button.ghost:hover:not(:disabled) .icon {
@@ -631,7 +728,7 @@ footer.note {
 
 .page-opening > p,
 .leaf-body .narration p {
-  margin: 0 0 0.95rem;
+  margin: 0 0 0.85rem;
 }
 
 .page-opening > p:last-child,
@@ -642,38 +739,40 @@ footer.note {
 .page-opening > p:first-child::first-letter {
   float: left;
   font-family: var(--kai);
-  font-size: 3.05em;
+  font-size: 3em;
   line-height: 0.92;
-  padding: 0.08em 0.14em 0 0;
-  color: var(--moss);
+  padding: 0.06em 0.14em 0 0;
+  color: var(--clay);
 }
 
 .page-opening > p,
 .leaf-body .narration {
-  font-size: 1.04rem;
-  line-height: 1.92;
+  font-size: 1.02rem;
+  line-height: 1.88;
   text-wrap: pretty;
   overflow-wrap: break-word;
   hanging-punctuation: allow-end;
 }
 
+/* Reading progress: a hairline of colour under the passage's own text. */
+
 .leaf-body .action {
   margin: 0;
-  padding-left: 0.9rem;
-  border-left: 2px solid var(--moss);
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--river);
   font-family: var(--ui);
-  font-size: 0.86rem;
-  line-height: 1.7;
-  color: var(--moss);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--river);
 }
 
 .leaf-body .action .tag {
-  margin-right: 0.6rem;
+  margin-right: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--gold);
 }
 
 .leaf-body .page-pending {
@@ -685,15 +784,16 @@ footer.note {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.4rem;
+  gap: 1.2rem;
   font-size: 0.9rem;
 }
 
 .pager button {
   border: 0;
-  padding: 0.25rem 0.5rem;
+  padding: 0.3rem 0.55rem;
   line-height: 1;
   color: var(--dim);
+  background: none;
 }
 
 .pager button .icon {
@@ -704,6 +804,7 @@ footer.note {
 .pager button:hover:not(:disabled) {
   color: var(--ink);
   border-color: transparent;
+  background: rgba(23, 20, 15, 0.06);
 }
 
 .pager-count {
@@ -712,21 +813,21 @@ footer.note {
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.12em;
-  color: var(--dim);
+  color: var(--river);
   font-variant-numeric: tabular-nums;
 }
 
 .composer {
   display: flex;
   flex-direction: column;
-  gap: 0.95rem;
-  padding: 1.2rem 0.2rem 0;
+  gap: 0.75rem;
+  padding: 0.9rem 0.2rem 0;
   border-top: 1px solid var(--rule);
 }
 
 .mode {
   display: flex;
-  gap: 1.4rem;
+  gap: 1.3rem;
 }
 
 .mode button {
@@ -739,6 +840,7 @@ footer.note {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--dim);
+  background: none;
 }
 
 .mode button .icon {
@@ -746,29 +848,34 @@ footer.note {
   height: 1em;
 }
 
+.mode button:hover:not(:disabled) {
+  color: var(--ink);
+  background: none;
+}
+
 .mode button[aria-pressed="true"] {
   color: var(--ink);
-  border-bottom-color: var(--moss);
+  border-bottom-color: var(--clay);
 }
 
 .mode button[aria-pressed="true"] .icon {
-  color: var(--moss);
+  color: var(--clay);
 }
 
 .input-row {
   display: flex;
   align-items: flex-end;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 textarea {
   flex: 1;
   min-height: 2.4rem;
   max-height: 12rem;
-  padding: 0.4rem 0;
+  padding: 0.35rem 0;
   font-family: var(--serif);
-  font-size: 1.02rem;
-  line-height: 1.65;
+  font-size: 1rem;
+  line-height: 1.6;
   color: var(--ink);
   background: transparent;
   border: 0;
@@ -787,27 +894,29 @@ textarea::placeholder {
 
 button#send {
   gap: 0.5em;
-  background: var(--moss);
-  border-color: var(--moss);
+  background-image: linear-gradient(180deg, #3b5a46 0%, var(--moss) 52%, var(--moss-deep) 100%);
+  border-color: var(--moss-deep);
   color: var(--paper);
-  padding: 0.55rem 1.15rem;
+  padding: 0.52rem 1.1rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.16) inset, 0 6px 14px -8px rgba(34, 53, 43, 0.9);
 }
 
 button#send .icon {
   width: 1.05em;
   height: 1.05em;
+  color: #e8d6a8;
 }
 
 button#send:hover:not(:disabled) {
-  background: var(--river);
-  border-color: var(--river);
+  background-image: linear-gradient(180deg, #3d7176 0%, var(--river) 52%, #24484c 100%);
+  border-color: #24484c;
   color: var(--paper);
 }
 
 .hints {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.1rem 1.3rem;
+  gap: 0.7rem 1.2rem;
 }
 
 .hints button {
@@ -816,36 +925,59 @@ button#send:hover:not(:disabled) {
   border-bottom: 1px solid var(--rule);
   padding: 0 0 0.15rem;
   font-family: var(--serif);
-  font-size: 0.94rem;
+  font-size: 0.92rem;
   color: var(--river);
+  background: none;
 }
 
 .hints button .icon {
   width: 0.9em;
   height: 0.9em;
-  color: var(--dim);
+  color: var(--gold);
 }
 
 .hints button:hover:not(:disabled) {
   border-bottom-color: var(--river);
   color: var(--river);
+  background: none;
 }
 
 .hints button:hover:not(:disabled) .icon {
+  color: var(--clay);
+}
+
+/* Messages carry their own tone: quiet green when all is well, clay when
+   something needs the reader's attention. */
+
+.message {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: 0.82rem;
+  line-height: 1.55;
   color: var(--moss);
 }
 
-.message {
-  min-height: 1.4rem;
-  margin: 0;
-  font-family: var(--ui);
-  font-size: 0.84rem;
+.message:not(:empty) {
+  padding: 0.4rem 0.7rem;
+  border-left: 2px solid var(--river);
+  background: rgba(47, 93, 98, 0.07);
+}
+
+.message[data-tone="warn"] {
+  color: var(--clay);
+  border-left-color: var(--clay);
+  background: rgba(154, 86, 55, 0.08);
+}
+
+.message[data-tone="done"] {
   color: var(--moss);
+  border-left-color: var(--gold);
+  background: rgba(172, 131, 72, 0.1);
 }
 
 footer.note {
-  font-size: 0.85rem;
-  line-height: 1.7;
+  font-size: 0.84rem;
+  line-height: 1.65;
   color: var(--dim);
   padding: 0 0.2rem;
   text-wrap: pretty;
@@ -855,22 +987,24 @@ footer.note {
 
 dialog.settings {
   width: min(28rem, calc(100vw - 2.5rem));
-  padding: 1.7rem 1.6rem 1.5rem;
+  padding: 1.5rem 1.5rem 1.3rem;
   border: 1px solid var(--rule);
+  border-top: 3px solid var(--moss);
   background: var(--paper);
   color: var(--ink);
   border-radius: 0;
-  box-shadow: 0 24px 60px -24px rgba(21, 19, 15, 0.4);
+  box-shadow: 0 24px 60px -24px rgba(21, 19, 15, 0.45);
 }
 
 dialog.settings::backdrop {
-  background: rgba(21, 19, 15, 0.3);
+  background: rgba(23, 20, 15, 0.42);
+  backdrop-filter: blur(1.5px);
 }
 
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 1.2rem;
   margin: 0;
 }
 
@@ -880,7 +1014,7 @@ dialog.settings::backdrop {
   gap: 0.45em;
   margin: 0;
   font-family: var(--kai);
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 600;
 }
 
@@ -896,7 +1030,7 @@ dialog.settings::backdrop {
   border: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .settings-block legend {
@@ -914,6 +1048,7 @@ dialog.settings::backdrop {
 .settings-block legend .icon {
   width: 1rem;
   height: 1rem;
+  color: var(--gold);
 }
 
 .settings-languages {
@@ -930,21 +1065,22 @@ dialog.settings::backdrop {
 
 .settings-languages button[aria-pressed="true"] {
   border-color: var(--moss);
+  background: rgba(46, 70, 57, 0.1);
   color: var(--moss);
 }
 
 .settings-note {
   margin: 0;
   font-family: var(--ui);
-  font-size: 0.78rem;
-  line-height: 1.65;
+  font-size: 0.77rem;
+  line-height: 1.6;
   color: var(--dim);
   text-wrap: pretty;
 }
 
 dialog.settings input {
   width: 100%;
-  padding: 0.5rem 0;
+  padding: 0.45rem 0;
   font-family: var(--mono);
   font-size: 0.86rem;
   color: var(--ink);
@@ -960,16 +1096,21 @@ dialog.settings input:focus {
 
 .settings-status {
   margin: 0;
-  min-height: 1.2rem;
   font-family: var(--ui);
-  font-size: 0.78rem;
+  font-size: 0.77rem;
   color: var(--moss);
+}
+
+.settings-status:not(:empty) {
+  padding: 0.35rem 0.6rem;
+  border-left: 2px solid var(--gold);
+  background: rgba(172, 131, 72, 0.09);
 }
 
 .settings-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.7rem;
+  gap: 0.6rem;
 }
 
 .settings-actions button.quiet {
@@ -978,19 +1119,20 @@ dialog.settings input:focus {
 }
 
 .settings-actions button.primary {
-  background: var(--moss);
-  border-color: var(--moss);
+  background-image: linear-gradient(180deg, #3b5a46 0%, var(--moss) 55%, var(--moss-deep) 100%);
+  border-color: var(--moss-deep);
   color: var(--paper);
 }
 
 .settings-actions button.primary .icon {
   width: 1em;
   height: 1em;
+  color: #e8d6a8;
 }
 
 .settings-actions button.primary:hover:not(:disabled) {
-  background: var(--river);
-  border-color: var(--river);
+  background-image: linear-gradient(180deg, #3d7176 0%, var(--river) 55%, #24484c 100%);
+  border-color: #24484c;
   color: var(--paper);
 }
 
@@ -1015,9 +1157,9 @@ dialog.settings input:focus {
     position: static;
     height: auto;
     border-right: 0;
-    border-bottom: 1px solid var(--rule);
-    padding: 0.9rem var(--gutter);
-    gap: 0.7rem;
+    border-bottom: 1px solid rgba(23, 20, 15, 0.22);
+    padding: 0.85rem var(--gutter);
+    gap: 0.6rem;
   }
 
   .rail-toggle {
@@ -1027,7 +1169,7 @@ dialog.settings input:focus {
   .rail-body {
     display: none;
     overflow: visible;
-    padding-top: 0.4rem;
+    padding-top: 0.3rem;
   }
 
   .rail[data-open] .rail-body {
@@ -1037,28 +1179,28 @@ dialog.settings input:focus {
   .rail-settings {
     margin-top: 0;
     border-top: 0;
-    padding: 0.3rem 0 0;
+    padding: 0.2rem 0 0;
   }
 
   .page {
-    gap: 1.3rem;
+    gap: 1rem;
   }
 
   .book {
-    padding: 2.2rem 1.5rem 1.8rem;
-    min-height: 26rem;
+    padding: 1.5rem 1.2rem 1.2rem;
+    min-height: 22rem;
   }
 }
 
 @media (max-width: 40rem) {
   body {
-    line-height: 1.75;
+    line-height: 1.72;
   }
 
   .input-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.9rem;
+    gap: 0.8rem;
   }
 
   button#send {
@@ -1066,13 +1208,13 @@ dialog.settings input:focus {
   }
 
   .book {
-    padding: 1.8rem 1.2rem 1.5rem;
+    padding: 1.3rem 1rem 1.1rem;
   }
 
   .page-opening > p,
   .leaf-body .narration {
-    font-size: 1rem;
-    line-height: 1.85;
+    font-size: 0.98rem;
+    line-height: 1.82;
   }
 
   .leaf-head,
@@ -1087,6 +1229,8 @@ dialog.settings input:focus {
   .story-name,
   .story-open,
   .run-delete,
+  .run-link,
+  .story-link,
   .icon,
   .story-open .icon,
   .story-bar button.ghost .icon,

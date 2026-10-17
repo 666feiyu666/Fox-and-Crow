@@ -265,9 +265,14 @@
     return glyphs || "I";
   }
 
-  function setMessage(key, text) {
+  function setMessage(key, text, tone) {
     messageKey = key;
     message.textContent = key ? t(key) : text || "";
+    if (tone) {
+      message.dataset.tone = tone;
+    } else {
+      delete message.dataset.tone;
+    }
   }
 
   /* Label text lives in its own slot so the icon beside it survives repaints. */
@@ -669,6 +674,7 @@
 
   async function renderShelf() {
     shelfMessage.textContent = "";
+    delete shelfMessage.dataset.tone;
     if (shelfEntries === null) {
       try {
         const data = await request("/api/cases");
@@ -676,6 +682,7 @@
       } catch (error) {
         shelfEntries = null;
         shelfMessage.textContent = t("shelfError");
+        shelfMessage.dataset.tone = "warn";
         return;
       }
     }
@@ -837,7 +844,7 @@
       setMessage(null);
       refreshRail();
     } catch (error) {
-      setMessage(error.key || null, error.message || t("error"));
+      setMessage(error.key || null, error.message || t("error"), "warn");
     } finally {
       clearTimeout(slowTimer);
       setBusy(false);
@@ -875,10 +882,10 @@
       );
       pageIndex = Math.max(0, passages.length - 1);
       renderPage();
-      setMessage(ended ? "ended" : null);
+      setMessage(ended ? "ended" : null, undefined, ended ? "done" : undefined);
       refreshRail();
     } catch (error) {
-      setMessage(error.key || null, error.message || t("resumeFailed"));
+      setMessage(error.key || null, error.message || t("resumeFailed"), "warn");
     } finally {
       setBusy(false);
     }
@@ -915,11 +922,11 @@
         loop,
       });
       setHints(ended ? [] : data.hints);
-      setMessage(ended ? "ended" : null);
+      setMessage(ended ? "ended" : null, undefined, ended ? "done" : undefined);
       await goToPage(passages.length - 1);
       refreshRail();
     } catch (error) {
-      setMessage(error.key || null, error.message || t("error"));
+      setMessage(error.key || null, error.message || t("error"), "warn");
     } finally {
       setBusy(false);
       if (!ended) {
