@@ -7,12 +7,21 @@
   --moss: #2e4639;
   --river: #2f5d62;
   --rule: #cfc7b6;
-  --kai: "Kaiti SC", "STKaiti", KaiTi, "Kaiti TC", "Baskerville Old Face",
-    Baskerville, "Palatino Linotype", Georgia, serif;
-  --serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", Cambria, "Times New Roman", serif;
-  --ui: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas,
-    "Liberation Mono", monospace;
+
+  /* Latin faces lead each stack; CJK faces follow so han characters land on
+     Songti/Kaiti while Latin text keeps a proper serif. */
+  --kai: "Kaiti SC", "STKaiti", KaiTi, "Kaiti TC", "Iowan Old Style", Baskerville,
+    "Palatino Linotype", Palatino, Georgia, serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Source Han Serif SC",
+    "Noto Serif SC", "Songti SC", STSong, SimSun, "Times New Roman", serif;
+  --ui: ui-sans-serif, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans SC", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Cascadia Mono", ui-monospace,
+    "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* One measure for the sheet, the composer and the pager. */
+  --measure: 40rem;
+  --gutter: clamp(1.1rem, 4vw, 2rem);
 }
 
 * {
@@ -29,7 +38,10 @@ body {
   background: var(--desk);
   color: var(--ink);
   font-family: var(--serif);
-  line-height: 1.8;
+  line-height: 1.78;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,7 +63,33 @@ body::after {
   outline-offset: 3px;
 }
 
+/* Icons: one line weight, drawn in whatever ink the control already uses. */
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.12em;
+  pointer-events: none;
+}
+
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
   font-family: var(--ui);
   font-size: 0.82rem;
   color: var(--ink);
@@ -76,7 +114,9 @@ button:disabled {
 
 a.back,
 button.back {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   border: 0;
   border-bottom: 1px solid transparent;
   padding: 0 0 0.15rem;
@@ -86,6 +126,18 @@ button.back {
   letter-spacing: 0.06em;
   color: var(--dim);
   text-decoration: none;
+}
+
+a.back .icon,
+button.back .icon {
+  width: 0.95em;
+  height: 0.95em;
+  transition: transform 140ms ease;
+}
+
+a.back:hover .icon,
+button.back:hover:not(:disabled) .icon {
+  transform: translateX(-2px);
 }
 
 a.back:hover,
@@ -98,15 +150,15 @@ button.back:hover:not(:disabled) {
 
 .app {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
+  grid-template-columns: 16rem minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 2.2rem 1.15rem 1.6rem;
+  gap: 1.6rem;
+  padding: 2.4rem 1.25rem 1.5rem;
   border-right: 1px solid var(--rule);
   position: sticky;
   top: 0;
@@ -116,18 +168,27 @@ button.back:hover:not(:disabled) {
 
 .rail-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
 }
 
 .rail-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42em;
   font-family: var(--kai);
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--ink);
   text-decoration: none;
   letter-spacing: 0.02em;
+}
+
+.rail-home .icon {
+  width: 1.05em;
+  height: 1.05em;
+  color: var(--moss);
 }
 
 .rail-home:hover {
@@ -145,6 +206,11 @@ button.back:hover:not(:disabled) {
   color: var(--dim);
 }
 
+.rail-toggle .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 .rail-body {
   display: flex;
   flex-direction: column;
@@ -154,6 +220,9 @@ button.back:hover:not(:disabled) {
 }
 
 .rail-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
   margin: 0;
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -161,6 +230,11 @@ button.back:hover:not(:disabled) {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--dim);
+}
+
+.rail-title .icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .rail-runs {
@@ -212,6 +286,7 @@ button.back:hover:not(:disabled) {
   line-height: 1.6;
   letter-spacing: 0.02em;
   color: var(--dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .run-delete {
@@ -222,6 +297,11 @@ button.back:hover:not(:disabled) {
   color: var(--dim);
   opacity: 0;
   transition: opacity 120ms ease, color 120ms ease;
+}
+
+.run-delete .icon {
+  width: 0.95em;
+  height: 0.95em;
 }
 
 .run:hover .run-delete,
@@ -244,6 +324,8 @@ button.back:hover:not(:disabled) {
 
 .rail-settings {
   margin-top: auto;
+  justify-content: flex-start;
+  gap: 0.5em;
   border: 0;
   border-top: 1px solid var(--rule);
   padding: 0.9rem 0 0;
@@ -255,6 +337,11 @@ button.back:hover:not(:disabled) {
   color: var(--dim);
 }
 
+.rail-settings .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
 .rail-settings:hover:not(:disabled) {
   color: var(--moss);
   border-color: var(--rule);
@@ -262,9 +349,9 @@ button.back:hover:not(:disabled) {
 
 .page {
   width: 100%;
-  max-width: 46rem;
+  max-width: calc(var(--measure) + var(--gutter) * 2);
   margin: 0 auto;
-  padding: 3.2rem 1.6rem 4.5rem;
+  padding: clamp(2rem, 4vw, 3.4rem) var(--gutter) clamp(3rem, 6vw, 4.5rem);
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
@@ -281,13 +368,20 @@ button.back:hover:not(:disabled) {
 
 .book {
   width: 100%;
-  max-width: 40rem;
-  min-height: 30rem;
-  padding: 3.4rem 3.4rem 2.6rem;
+  max-width: var(--measure);
+  min-height: clamp(24rem, 56vh, 34rem);
+  padding: clamp(2rem, 3.4vw, 3.1rem) clamp(1.3rem, 3.6vw, 3.1rem)
+    clamp(1.5rem, 2.6vw, 2.3rem);
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
-  background: var(--paper);
+  gap: 1.7rem;
+  background-color: var(--paper);
+  /* A faint shade along the binding edge. */
+  background-image: linear-gradient(
+    90deg,
+    rgba(21, 19, 15, 0.05),
+    rgba(21, 19, 15, 0) 2.6rem
+  );
   transform-origin: center left;
   backface-visibility: hidden;
   box-shadow:
@@ -304,29 +398,34 @@ button.back:hover:not(:disabled) {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding-bottom: 0.9rem;
+  padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--rule);
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--dim);
 }
 
 .leaf-title {
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leaf-state {
+  flex: none;
   text-align: right;
   letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
 }
 
 .leaf-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.3rem;
+  gap: 1.25rem;
   min-height: 16rem;
 }
 
@@ -335,11 +434,11 @@ button.back:hover:not(:disabled) {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding-top: 0.9rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--rule);
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--dim);
 }
@@ -353,25 +452,27 @@ button.back:hover:not(:disabled) {
 .book-title {
   margin: 0;
   font-family: var(--kai);
-  font-size: clamp(2.1rem, 4.6vw, 2.9rem);
+  font-size: clamp(2rem, 4.2vw, 2.75rem);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.18;
+  letter-spacing: 0.01em;
+  line-height: 1.16;
+  text-wrap: balance;
 }
 
 .book-lede {
   margin: 0;
-  max-width: 32rem;
-  font-size: 1rem;
+  max-width: 31rem;
+  font-size: 0.98rem;
   line-height: 1.85;
   color: var(--dim);
+  text-wrap: pretty;
 }
 
 .book-quote {
   margin: 0.3rem 0 0.4rem;
   padding-left: 1rem;
   border-left: 1px solid var(--rule);
-  font-size: 0.98rem;
+  font-size: 0.97rem;
   line-height: 1.8;
   color: var(--dim);
 }
@@ -390,21 +491,22 @@ button.back:hover:not(:disabled) {
 
 .story-link {
   display: block;
-  padding: 1.5rem 0;
+  padding: 1.4rem 0;
   color: inherit;
   text-decoration: none;
 }
 
 .story-item:first-child .story-link {
-  padding-top: 0.4rem;
+  padding-top: 0.3rem;
 }
 
 .story-name {
   margin: 0 0 0.5rem;
   font-family: var(--kai);
-  font-size: clamp(1.4rem, 2.8vw, 1.7rem);
+  font-size: clamp(1.35rem, 2.6vw, 1.6rem);
   font-weight: 600;
   line-height: 1.3;
+  text-wrap: balance;
   transition: color 120ms ease;
 }
 
@@ -412,12 +514,16 @@ button.back:hover:not(:disabled) {
   margin: 0 0 0.75rem;
   padding-left: 0.9rem;
   border-left: 1px solid var(--rule);
-  font-size: 0.97rem;
-  line-height: 1.75;
+  font-size: 0.96rem;
+  line-height: 1.78;
   color: var(--dim);
+  text-wrap: pretty;
 }
 
 .story-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
@@ -426,6 +532,12 @@ button.back:hover:not(:disabled) {
   border-bottom: 1px solid var(--rule);
   padding-bottom: 0.1rem;
   transition: color 120ms ease, border-color 120ms ease;
+}
+
+.story-open .icon {
+  width: 0.9em;
+  height: 0.9em;
+  transition: transform 140ms ease;
 }
 
 .story-link:hover .story-name,
@@ -437,6 +549,11 @@ button.back:hover:not(:disabled) {
 .story-link:focus-visible .story-open {
   color: var(--moss);
   border-bottom-color: var(--moss);
+}
+
+.story-link:hover .story-open .icon,
+.story-link:focus-visible .story-open .icon {
+  transform: translateX(2px);
 }
 
 .pick-languages {
@@ -460,17 +577,26 @@ button.back:hover:not(:disabled) {
   color: var(--moss);
 }
 
-/* The story page. */
+/* The story page: bar, sheet, pager and composer all sit on one measure. */
 
 .story {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1.15rem;
+}
+
+.story-bar,
+.pager,
+.composer,
+footer.note {
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
 }
 
 .story-bar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0 0.2rem;
@@ -480,6 +606,7 @@ button.back:hover:not(:disabled) {
   border: 0;
   border-bottom: 1px solid transparent;
   padding: 0.2rem 0;
+  gap: 0.4em;
   font-family: var(--mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
@@ -487,9 +614,19 @@ button.back:hover:not(:disabled) {
   color: var(--dim);
 }
 
+.story-bar button.ghost .icon {
+  width: 0.95em;
+  height: 0.95em;
+  transition: transform 320ms ease;
+}
+
 .story-bar button.ghost:hover:not(:disabled) {
   color: var(--ink);
   border-bottom-color: var(--rule);
+}
+
+.story-bar button.ghost:hover:not(:disabled) .icon {
+  transform: rotate(-40deg);
 }
 
 .page-opening > p,
@@ -513,8 +650,11 @@ button.back:hover:not(:disabled) {
 
 .page-opening > p,
 .leaf-body .narration {
-  font-size: 1.05rem;
-  line-height: 1.95;
+  font-size: 1.04rem;
+  line-height: 1.92;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  hanging-punctuation: allow-end;
 }
 
 .leaf-body .action {
@@ -546,14 +686,19 @@ button.back:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   gap: 1.4rem;
+  font-size: 0.9rem;
 }
 
 .pager button {
   border: 0;
-  padding: 0.2rem 0.5rem;
-  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
   line-height: 1;
   color: var(--dim);
+}
+
+.pager button .icon {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .pager button:hover:not(:disabled) {
@@ -574,8 +719,8 @@ button.back:hover:not(:disabled) {
 .composer {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.3rem 0.2rem 0;
+  gap: 0.95rem;
+  padding: 1.2rem 0.2rem 0;
   border-top: 1px solid var(--rule);
 }
 
@@ -588,6 +733,7 @@ button.back:hover:not(:disabled) {
   border: 0;
   border-bottom: 2px solid transparent;
   padding: 0.15rem 0;
+  gap: 0.35em;
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
@@ -595,9 +741,18 @@ button.back:hover:not(:disabled) {
   color: var(--dim);
 }
 
+.mode button .icon {
+  width: 1em;
+  height: 1em;
+}
+
 .mode button[aria-pressed="true"] {
   color: var(--ink);
   border-bottom-color: var(--moss);
+}
+
+.mode button[aria-pressed="true"] .icon {
+  color: var(--moss);
 }
 
 .input-row {
@@ -631,10 +786,16 @@ textarea::placeholder {
 }
 
 button#send {
+  gap: 0.5em;
   background: var(--moss);
   border-color: var(--moss);
   color: var(--paper);
   padding: 0.55rem 1.15rem;
+}
+
+button#send .icon {
+  width: 1.05em;
+  height: 1.05em;
 }
 
 button#send:hover:not(:disabled) {
@@ -646,21 +807,32 @@ button#send:hover:not(:disabled) {
 .hints {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.2rem;
+  gap: 1.1rem 1.3rem;
 }
 
 .hints button {
+  gap: 0.35em;
   border: 0;
   border-bottom: 1px solid var(--rule);
   padding: 0 0 0.15rem;
   font-family: var(--serif);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   color: var(--river);
+}
+
+.hints button .icon {
+  width: 0.9em;
+  height: 0.9em;
+  color: var(--dim);
 }
 
 .hints button:hover:not(:disabled) {
   border-bottom-color: var(--river);
   color: var(--river);
+}
+
+.hints button:hover:not(:disabled) .icon {
+  color: var(--moss);
 }
 
 .message {
@@ -672,10 +844,11 @@ button#send:hover:not(:disabled) {
 }
 
 footer.note {
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   line-height: 1.7;
   color: var(--dim);
   padding: 0 0.2rem;
+  text-wrap: pretty;
 }
 
 /* Settings. */
@@ -702,10 +875,19 @@ dialog.settings::backdrop {
 }
 
 .settings-form h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
   margin: 0;
   font-family: var(--kai);
   font-size: 1.4rem;
   font-weight: 600;
+}
+
+.settings-form h2 .icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--moss);
 }
 
 .settings-block {
@@ -718,12 +900,20 @@ dialog.settings::backdrop {
 }
 
 .settings-block legend {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
   padding: 0;
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--dim);
+}
+
+.settings-block legend .icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .settings-languages {
@@ -747,8 +937,9 @@ dialog.settings::backdrop {
   margin: 0;
   font-family: var(--ui);
   font-size: 0.78rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--dim);
+  text-wrap: pretty;
 }
 
 dialog.settings input {
@@ -792,6 +983,11 @@ dialog.settings input:focus {
   color: var(--paper);
 }
 
+.settings-actions button.primary .icon {
+  width: 1em;
+  height: 1em;
+}
+
 .settings-actions button.primary:hover:not(:disabled) {
   background: var(--river);
   border-color: var(--river);
@@ -820,12 +1016,12 @@ dialog.settings input:focus {
     height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--rule);
-    padding: 0.9rem 1.1rem;
+    padding: 0.9rem var(--gutter);
     gap: 0.7rem;
   }
 
   .rail-toggle {
-    display: block;
+    display: inline-flex;
   }
 
   .rail-body {
@@ -842,11 +1038,10 @@ dialog.settings input:focus {
     margin-top: 0;
     border-top: 0;
     padding: 0.3rem 0 0;
-    text-align: left;
   }
 
   .page {
-    padding: 1.8rem 1.1rem 3.2rem;
+    gap: 1.3rem;
   }
 
   .book {
@@ -856,16 +1051,34 @@ dialog.settings input:focus {
 }
 
 @media (max-width: 40rem) {
+  body {
+    line-height: 1.75;
+  }
+
   .input-row {
     flex-direction: column;
     align-items: stretch;
     gap: 0.9rem;
   }
+
   button#send {
     width: 100%;
   }
+
   .book {
     padding: 1.8rem 1.2rem 1.5rem;
+  }
+
+  .page-opening > p,
+  .leaf-body .narration {
+    font-size: 1rem;
+    line-height: 1.85;
+  }
+
+  .leaf-head,
+  .leaf-foot {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
   }
 }
 
@@ -873,7 +1086,17 @@ dialog.settings input:focus {
   button,
   .story-name,
   .story-open,
-  .run-delete {
+  .run-delete,
+  .icon,
+  .story-open .icon,
+  .story-bar button.ghost .icon,
+  a.back .icon {
     transition: none;
+  }
+
+  .story-link:hover .story-open .icon,
+  a.back:hover .icon,
+  .story-bar button.ghost:hover:not(:disabled) .icon {
+    transform: none;
   }
 }

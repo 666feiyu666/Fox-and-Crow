@@ -12,28 +12,115 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Line icons, drawn in the same ink as everything else. -->
+    <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path d="M4.5 5.6A2.6 2.6 0 0 1 7.1 3H19v15.4H7.1a2.6 2.6 0 0 0-2.6 2.6V5.6Z" />
+        <path d="M4.5 18.4A2.6 2.6 0 0 1 7.1 15.8H19" />
+      </symbol>
+      <symbol id="i-history" viewBox="0 0 24 24">
+        <path d="M3.6 12.2a8.6 8.6 0 1 0 2.7-6.3" />
+        <path d="M3.1 4.4v3.9h3.9" />
+        <path d="M12 7.6V12l3 1.8" />
+      </symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.1" />
+        <path
+          d="M12 3.1v2.2M12 18.7v2.2M4.6 7.9l1.9 1.1M17.5 15l1.9 1.1M4.6 16.1l1.9-1.1M17.5 9l1.9-1.1"
+        />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4.6 7.1h14.8" />
+        <path d="M9.6 7.1V4.9h4.8v2.2" />
+        <path d="M6.6 7.1 7.4 19.4h9.2L17.4 7.1" />
+        <path d="M10.6 10.6v5.4M13.4 10.6v5.4" />
+      </symbol>
+      <symbol id="i-arrow-left" viewBox="0 0 24 24">
+        <path d="M19.2 12H4.8" />
+        <path d="M10.9 5.6 4.5 12l6.4 6.4" />
+      </symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24">
+        <path d="M4.8 12h14.4" />
+        <path d="M13.1 5.6 19.5 12l-6.4 6.4" />
+      </symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24">
+        <path d="M20.1 12a8.1 8.1 0 1 1-2.6-5.9" />
+        <path d="M20.1 4.4v4.5h-4.5" />
+      </symbol>
+      <symbol id="i-say" viewBox="0 0 24 24">
+        <path d="M10.3 6.6H7a2.3 2.3 0 0 0-2.3 2.3v2.5A2.3 2.3 0 0 0 7 13.7h1.5c0 2.3-1.2 3.6-3.1 4.2" />
+        <path d="M20.3 6.6h-3.3A2.3 2.3 0 0 0 14.7 9v2.5a2.3 2.3 0 0 0 2.3 2.3h1.5c0 2.3-1.2 3.6-3.1 4.2" />
+      </symbol>
+      <symbol id="i-do" viewBox="0 0 24 24">
+        <path d="M13.6 3.2 6.4 13.7h4.8L10.4 20.8 17.6 10.3h-4.8L13.6 3.2Z" />
+      </symbol>
+      <symbol id="i-feather" viewBox="0 0 24 24">
+        <path
+          d="M19.6 4.4c-3.6.4-6.3 1.7-8.4 3.9-2 2-3.1 4.7-3.3 7.8 3.1-.2 5.8-1.3 7.8-3.3 2.2-2.1 3.5-4.8 3.9-8.4Z"
+        />
+        <path d="M4.8 19.2 13.7 10.3" />
+      </symbol>
+      <symbol id="i-bulb" viewBox="0 0 24 24">
+        <path d="M12 3.6a5.7 5.7 0 0 1 3.2 10.4v1.3H8.8V14A5.7 5.7 0 0 1 12 3.6Z" />
+        <path d="M9.6 18h4.8" />
+        <path d="M10.3 20.6h3.4" />
+      </symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24">
+        <path d="M14.2 5.4 7.6 12l6.6 6.6" />
+      </symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24">
+        <path d="M9.8 5.4 16.4 12l-6.6 6.6" />
+      </symbol>
+      <symbol id="i-key" viewBox="0 0 24 24">
+        <circle cx="8.4" cy="8.4" r="3.8" />
+        <path d="M11.1 11.1 19.8 19.8" />
+        <path d="M16.2 16.2l-1.5 1.5M18.4 18.4l-1.5 1.5" />
+      </symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M3.5 12h17" />
+        <path
+          d="M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.3-3.6-8.5S9.6 5.8 12 3.5Z"
+        />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="M5 12.5 9.9 17.4 19.4 6.6" />
+      </symbol>
+    </svg>
+
     <div class="app">
       <aside class="rail" id="rail">
         <div class="rail-head">
-          <a class="rail-home" href="#/" id="rail-home">Stories</a>
+          <a class="rail-home" href="#/" id="rail-home">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-book"></use></svg>
+            <span data-label>Stories</span>
+          </a>
           <button
             type="button"
             class="rail-toggle"
             id="rail-toggle"
             aria-expanded="false"
             aria-controls="rail-body"
+            title="Past runs"
           >
-            Past runs
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-history"></use></svg>
+            <span data-label>Past runs</span>
           </button>
         </div>
 
         <div class="rail-body" id="rail-body">
-          <h2 class="rail-title" id="rail-runs-title">Past runs</h2>
+          <h2 class="rail-title" id="rail-runs-title">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-history"></use></svg>
+            <span data-label>Past runs</span>
+          </h2>
           <ul class="rail-runs" id="rail-runs"></ul>
           <p class="rail-empty" id="rail-empty" hidden></p>
         </div>
 
-        <button class="rail-settings" id="settings-open" type="button">Settings</button>
+        <button class="rail-settings" id="settings-open" type="button" title="Settings">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-gear"></use></svg>
+          <span data-label>Settings</span>
+        </button>
       </aside>
 
       <main class="page">
@@ -66,7 +153,12 @@
                 <span class="leaf-state" id="pick-leaf-state"></span>
               </header>
               <div class="leaf-body">
-                <a class="back" href="#/" id="pick-back">All stories</a>
+                <a class="back" href="#/" id="pick-back">
+                  <svg class="icon" aria-hidden="true" focusable="false">
+                    <use href="#i-arrow-left"></use>
+                  </svg>
+                  <span data-label>All stories</span>
+                </a>
                 <h1 class="book-title" id="pick-title"></h1>
                 <p class="book-quote" id="pick-quote"></p>
                 <p class="book-lede" id="pick-lede"></p>
@@ -83,8 +175,16 @@
 
         <section class="story" id="story-view" hidden>
           <div class="story-bar">
-            <a class="back" href="#/" id="back">All stories</a>
-            <button id="restart" class="ghost" type="button">Restart</button>
+            <a class="back" href="#/" id="back">
+              <svg class="icon" aria-hidden="true" focusable="false">
+                <use href="#i-arrow-left"></use>
+              </svg>
+              <span data-label>All stories</span>
+            </a>
+            <button id="restart" class="ghost" type="button" title="Restart">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-redo"></use></svg>
+              <span data-label>Restart</span>
+            </button>
           </div>
 
           <div class="book-wrap">
@@ -102,15 +202,29 @@
           </div>
 
           <nav class="pager" aria-label="Pages">
-            <button type="button" id="page-prev" aria-label="Previous page">←</button>
+            <button type="button" id="page-prev" aria-label="Previous page" title="Previous page">
+              <svg class="icon" aria-hidden="true" focusable="false">
+                <use href="#i-chevron-left"></use>
+              </svg>
+            </button>
             <span class="pager-count" id="pager-count"></span>
-            <button type="button" id="page-next" aria-label="Next page">→</button>
+            <button type="button" id="page-next" aria-label="Next page" title="Next page">
+              <svg class="icon" aria-hidden="true" focusable="false">
+                <use href="#i-chevron-right"></use>
+              </svg>
+            </button>
           </nav>
 
           <section class="composer" id="composer">
             <div class="mode" role="group" aria-label="Input mode">
-              <button type="button" data-mode="say" aria-pressed="true" id="mode-say">Say</button>
-              <button type="button" data-mode="do" aria-pressed="false" id="mode-do">Do</button>
+              <button type="button" data-mode="say" aria-pressed="true" id="mode-say">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-say"></use></svg>
+                <span data-label>Say</span>
+              </button>
+              <button type="button" data-mode="do" aria-pressed="false" id="mode-do">
+                <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-do"></use></svg>
+                <span data-label>Do</span>
+              </button>
             </div>
             <div class="input-row">
               <label class="sr-only" for="action" id="input-label">Your line or action</label>
@@ -121,7 +235,12 @@
                 placeholder="One line you say…"
                 autocomplete="off"
               ></textarea>
-              <button class="primary" id="send" type="button">Send</button>
+              <button class="primary" id="send" type="button" title="Send">
+                <svg class="icon" aria-hidden="true" focusable="false">
+                  <use href="#i-feather"></use>
+                </svg>
+                <span data-label>Send</span>
+              </button>
             </div>
             <div class="hints" id="hints"></div>
             <p class="message" id="message" role="status"></p>
@@ -134,15 +253,24 @@
 
     <dialog class="settings" id="settings">
       <form class="settings-form" id="settings-form">
-        <h2 id="settings-title">Settings</h2>
+        <h2 id="settings-title">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-gear"></use></svg>
+          <span data-label>Settings</span>
+        </h2>
 
         <fieldset class="settings-block">
-          <legend id="settings-language-label">Interface language</legend>
+          <legend id="settings-language-label">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg>
+            <span data-label>Interface language</span>
+          </legend>
           <div class="settings-languages" id="settings-languages"></div>
         </fieldset>
 
         <fieldset class="settings-block">
-          <legend id="settings-key-label">Story API key</legend>
+          <legend id="settings-key-label">
+            <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-key"></use></svg>
+            <span data-label>Story API key</span>
+          </legend>
           <p class="settings-note" id="settings-note"></p>
           <label class="sr-only" for="api-key" id="api-key-label">Story API key</label>
           <input
@@ -154,8 +282,13 @@
           />
           <p class="settings-status" id="settings-status" role="status"></p>
           <div class="settings-actions">
-            <button type="button" class="quiet" id="settings-close">Close</button>
-            <button type="submit" class="primary" id="settings-save">Save key</button>
+            <button type="button" class="quiet" id="settings-close">
+              <span data-label>Close</span>
+            </button>
+            <button type="submit" class="primary" id="settings-save" title="Save key">
+              <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>
+              <span data-label>Save key</span>
+            </button>
           </div>
         </fieldset>
       </form>

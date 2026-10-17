@@ -52,6 +52,8 @@
       again: "Another beginning",
       ended: "The story has ended. Restart to begin again.",
       inputLabel: "Your line or action",
+      prevPage: "Previous page",
+      nextPage: "Next page",
       say: "Say",
       do: "Do",
       placeholderSay: "One line you say…",
@@ -114,6 +116,8 @@
       again: "又一次开始",
       ended: "故事结束了。重新开始可以再来一次。",
       inputLabel: "你说的话，或你做的事",
+      prevPage: "上一页",
+      nextPage: "下一页",
       say: "说",
       do: "做",
       placeholderSay: "你说一句话……",
@@ -129,6 +133,7 @@
     },
   };
 
+  const SVG_NS = "http://www.w3.org/2000/svg";
   const UI_LANGUAGE_KEY = "storyteller.ui";
   const PICK_ROUTE = /^#\/pick\/([^/]+)$/;
   const STORY_ROUTE = /^#\/story\/([^/]+)\/([^/]+)$/;
@@ -265,6 +270,31 @@
     message.textContent = key ? t(key) : text || "";
   }
 
+  /* Label text lives in its own slot so the icon beside it survives repaints. */
+
+  function setLabel(el, text) {
+    if (!el) {
+      return;
+    }
+    const slot = el.querySelector("[data-label]");
+    if (slot) {
+      slot.textContent = text;
+    } else {
+      el.textContent = text;
+    }
+  }
+
+  function icon(name, className = "icon") {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", className);
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const use = document.createElementNS(SVG_NS, "use");
+    use.setAttribute("href", `#i-${name}`);
+    svg.appendChild(use);
+    return svg;
+  }
+
   function setBusy(value) {
     busy = value;
     sendButton.disabled = value || ended;
@@ -392,14 +422,16 @@
   }
 
   function paintStoryChrome() {
-    restartButton.textContent = t("restart");
-    backLink.textContent = t("back");
+    setLabel(restartButton, t("restart"));
+    restartButton.title = t("restart");
+    setLabel(backLink, t("back"));
     actionBox.placeholder = fromTable(mode === "say" ? "placeholderSay" : "placeholderDo");
-    sendButton.textContent = t("send");
+    setLabel(sendButton, t("send"));
+    sendButton.title = t("send");
     inputLabel.textContent = t("inputLabel");
     note.textContent = t("note");
     modeButtons.forEach((button) => {
-      button.textContent = fromTable(button.dataset.mode === "say" ? "say" : "do");
+      setLabel(button, fromTable(button.dataset.mode === "say" ? "say" : "do"));
       button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
     });
     renderLeafChrome();
@@ -410,26 +442,32 @@
 
   function paintStatic() {
     document.documentElement.lang = uiLanguage;
-    railHome.textContent = t("railStories");
-    railToggle.textContent = t("railToggle");
-    railRunsTitle.textContent = t("railRuns");
+    setLabel(railHome, t("railStories"));
+    setLabel(railToggle, t("railToggle"));
+    railToggle.title = t("railToggle");
+    setLabel(railRunsTitle, t("railRuns"));
     railEmpty.textContent = t("railEmpty");
-    settingsOpen.textContent = t("settings");
-    settingsTitle.textContent = t("settingsTitle");
-    settingsLanguageLabel.textContent = t("uiLanguageLabel");
-    settingsKeyLabel.textContent = t("storyKeyLabel");
+    setLabel(settingsOpen, t("settings"));
+    setLabel(settingsTitle, t("settingsTitle"));
+    setLabel(settingsLanguageLabel, t("uiLanguageLabel"));
+    setLabel(settingsKeyLabel, t("storyKeyLabel"));
     settingsNote.textContent = t("storyKeyNote");
     apiKeyLabel.textContent = t("storyKeyLabel");
-    settingsSave.textContent = t("saveKey");
-    settingsClose.textContent = t("close");
+    setLabel(settingsSave, t("saveKey"));
+    settingsSave.title = t("saveKey");
+    setLabel(settingsClose, t("close"));
     shelfTitle.textContent = t("shelfTitle");
     shelfLede.textContent = t("shelfLede");
     shelfList.setAttribute("aria-label", t("shelfTitle"));
     shelfLeafTitle.textContent = t("railStories");
     shelfLeafState.textContent = t("shelfTitle");
     shelfLeafLabel.textContent = t("labelShelf");
-    pickBack.textContent = t("back");
+    setLabel(pickBack, t("back"));
     pickLede.textContent = t("pickLede");
+    pagePrev.setAttribute("aria-label", t("prevPage"));
+    pagePrev.title = t("prevPage");
+    pageNext.setAttribute("aria-label", t("nextPage"));
+    pageNext.title = t("nextPage");
     paintStoryChrome();
     renderSettingsLanguages();
   }
@@ -482,7 +520,7 @@
       ...(items || []).map((item) => {
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = item;
+        button.append(icon("bulb"), document.createTextNode(item));
         button.addEventListener("click", () => {
           actionBox.value = item;
           actionBox.focus();
@@ -571,7 +609,7 @@
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "run-delete";
-    remove.textContent = "×";
+    remove.append(icon("trash"));
     remove.title = t("runDelete");
     remove.setAttribute("aria-label", t("runDelete"));
     remove.addEventListener("click", () => deleteRun(run.id));
@@ -623,7 +661,7 @@
     quote.textContent = `“${caseText(entry.excerpt, uiLanguage)}”`;
     const open = document.createElement("span");
     open.className = "story-open";
-    open.textContent = t("readThis");
+    open.append(document.createTextNode(t("readThis")), icon("arrow-right"));
     link.append(name, quote, open);
     item.appendChild(link);
     return item;
