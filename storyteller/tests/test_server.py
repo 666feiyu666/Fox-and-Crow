@@ -1,7 +1,5 @@
 import http.client
 import json
-import shutil
-import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -10,9 +8,10 @@ from backend.case import Case
 from backend.model import ConfigurationError, ModelError
 from backend.server import SessionRegistry, create_server
 from backend.storyteller import Storyteller
-from tests.test_case import CASE_ROOT, write_case
 
+CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
+CINDERELLA = Case.load(CASE_ROOT / "cinderella")
 
 
 class StubModel:
@@ -20,10 +19,7 @@ class StubModel:
 
     configured = True
 
-    def __init__(self, time_cost=0, meters=None, ending="none", fail=None):
-        self.time_cost = time_cost
-        self.meters = meters or {}
-        self.ending = ending
+    def __init__(self, fail=None):
         self.fail = fail
         self.turns = 0
 
@@ -34,11 +30,8 @@ class StubModel:
             self.turns += 1
             return {
                 "outcome": "partial",
-                "time_cost": self.time_cost,
-                "meters": self.meters,
                 "facts": [f"Turn {self.turns} happened."],
                 "scene": "Private plan.",
-                "ending": self.ending,
             }
         return {"narration": "You move, and the world answers.", "hints": ["Wait.", "Look up."]}
 
@@ -103,31 +96,29 @@ class BasicServerTests(ServerTestBase):
             self.assertEqual(status, 200, path)
             self.assertIsInstance(body, str)
 
-    def test_session_returns_case_opening_and_state(self):
+    def test_session_returns_the_story_the_role_and_the_opening(self):
         payload = self.new_session("zh")
-        self.assertEqual(payload["opening"]["text"], FOX.opening("zh"))
+        self.assertEqual(payload["opening"], FOX.opening("zh"))
         self.assertEqual(payload["case"]["id"], FOX.id)
-        self.assertEqual(payload["case"]["title"]["zh"], FOX.title("zh"))
-        self.assertEqual(payload["case"]["playerCharacter"], "狐狸")
-        self.assertTrue(payload["playerState"]["hasClock"])
-        self.assertEqual(payload["playerState"]["remainingUnits"], 6)
-        self.assertFalse(payload["playerState"]["ended"])
+        self.assertEqual(payload["case"]["title"]["zh"], "狐狸与乌鸦")
+        self.assertEqual(payload["case"]["player"]["zh"], "狐狸")
+        self.assertEqual(payload["playerState"], {"language": "zh", "turn": 0})
 
-    def test_session_rejects_unknown_language(self):
+    def test_session_rejects_an_unknown_language(self):
         status, _ = self.request("POST", "/api/session", {"language": "fr"})
         self.assertEqual(status, 400)
 
-    def test_turn_returns_narration_hints_and_state(self):
+    def test_turn_returns_the_next_passage(self):
         session = self.new_session()
         status, payload = self.take_turn(session["sessionId"], "nose the thorns")
         self.assertEqual(status, 200)
         self.assertEqual(payload["narration"], "You move, and the world answers.")
         self.assertEqual(payload["hints"], ["Wait.", "Look up."])
         self.assertEqual(payload["outcome"], "partial")
-        self.assertEqual(payload["playerState"]["turn"], 1)
-        self.assertEqual(payload["events"], [])
+        self.assertEqual(payload["playerState"], {"language": "en", "turn": 1})
+        self.assertNotIn("events", payload)
 
-    def test_turn_validates_payload(self):
+    def test_turn_validates_its_payload(self):
         session_id = self.new_session()["sessionId"]
         cases = [
             {"sessionId": session_id, "type": "shout", "text": "hey"},
@@ -139,7 +130,7 @@ class BasicServerTests(ServerTestBase):
             status, _ = self.request("POST", "/api/turn", payload)
             self.assertEqual(status, 400, payload)
 
-    def test_unknown_session_is_not_found(self):
+    def test_an_unknown_session_is_not_found(self):
         status, payload = self.take_turn("missing")
         self.assertEqual(status, 404)
         self.assertIn("expired", payload["error"])
@@ -151,71 +142,28 @@ class BasicServerTests(ServerTestBase):
         status, _ = self.take_turn(session_id)
         self.assertEqual(status, 404)
 
-
-class DayCycleTests(ServerTestBase):
-    def make_model(self):
-        return StubModel(time_cost=3)
-
-    def test_day_closes_once_six_units_are_spent(self):
+    def test_the_story_keeps_going_for_many_turns(self):
         session_id = self.new_session()["sessionId"]
-        status, first = self.take_turn(session_id)
-        self.assertEqual((status, first["events"]), (200, []))
-        self.assertEqual(first["playerState"]["elapsedUnits"], 3)
-        status, second = self.take_turn(session_id)
-        self.assertEqual(second["events"], ["day_reset"])
-        self.assertEqual(second["playerState"]["day"], 2)
-        self.assertEqual(second["playerState"]["elapsedUnits"], 0)
-        self.assertEqual(second["playerState"]["phase"], "morning")
-
-
-class EndedStoryTests(ServerTestBase):
-    def make_model(self):
-        return StubModel(meters={"trust": 2, "insight": 2}, ending="end")
-
-    def test_story_ends_only_after_the_earned_turn_then_refuses_more(self):
-        session_id = self.new_session()["sessionId"]
-        payload = {}
-        for _ in range(FOX.ending.min_turns):
-            status, payload = self.take_turn(session_id, "there is something I must say", "say")
-            self.assertEqual(status, 200)
-            if not payload["playerState"]["ended"]:
-                self.assertEqual(payload["events"], ["ending_refused"])
-        self.assertTrue(payload["playerState"]["ended"])
-        status, payload = self.take_turn(session_id)
-        self.assertEqual(status, 409)
-        self.assertIn("ended", payload["error"])
-
-
-class ClocklessCaseTests(ServerTestBase):
-    @classmethod
-    def setUpClass(cls):
-        cls.tempdir = tempfile.mkdtemp()
-        cls.case = Case.load(write_case(Path(cls.tempdir)))
-
-    @classmethod
-    def tearDownClass(cls):
-        shutil.rmtree(cls.tempdir, ignore_errors=True)
-
-    def make_model(self):
-        return StubModel(time_cost=3)
-
-    def test_clockless_case_reports_no_clock_and_never_resets(self):
-        session = self.new_session()
-        self.assertFalse(session["playerState"]["hasClock"])
-        session_id = session["sessionId"]
-        for _ in range(3):
+        for expected in range(1, 13):
             status, payload = self.take_turn(session_id)
             self.assertEqual(status, 200)
-            self.assertEqual(payload["events"], [])
-        self.assertEqual(payload["playerState"]["turn"], 3)
-        self.assertEqual(payload["playerState"]["day"], 1)
+            self.assertEqual(payload["playerState"]["turn"], expected)
+
+
+class CinderellaServerTests(ServerTestBase):
+    case = CINDERELLA
+
+    def test_second_case_serves_its_own_story(self):
+        session = self.new_session("zh")
+        self.assertEqual(session["case"]["title"]["zh"], "灰姑娘")
+        self.assertEqual(session["opening"], CINDERELLA.opening("zh"))
 
 
 class ModelFailureTests(ServerTestBase):
     def make_model(self):
         return StubModel(fail=ConfigurationError("no key"))
 
-    def test_unconfigured_model_is_a_503(self):
+    def test_an_unconfigured_model_is_a_503(self):
         status, _ = self.take_turn(self.new_session()["sessionId"])
         self.assertEqual(status, 503)
 
@@ -224,7 +172,7 @@ class ModelRejectionTests(ServerTestBase):
     def make_model(self):
         return StubModel(fail=ModelError("bad", status_code=401))
 
-    def test_rejected_key_is_a_503_with_guidance(self):
+    def test_a_rejected_key_is_a_503_with_guidance(self):
         status, payload = self.take_turn(self.new_session()["sessionId"])
         self.assertEqual(status, 503)
         self.assertIn("DEEPSEEK_API_KEY", payload["error"])

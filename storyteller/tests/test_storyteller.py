@@ -1,14 +1,14 @@
 import json
-import tempfile
 import unittest
 from pathlib import Path
 
 from backend.case import Case
 from backend.session import Ruling, RulingError, initial_state
 from backend.storyteller import Storyteller
-from tests.test_case import CASE_ROOT, write_case
 
+CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
+CINDERELLA = Case.load(CASE_ROOT / "cinderella")
 
 
 class StubModel:
@@ -26,11 +26,8 @@ class StubModel:
 def ruling_payload(**overrides):
     payload = {
         "outcome": "failure",
-        "time_cost": 1,
-        "meters": {"trust": 0, "insight": 1},
         "facts": ["The crow refused to look down."],
         "scene": "She keeps the cheese and turns away.",
-        "ending": "none",
     }
     payload.update(overrides)
     return payload
@@ -39,64 +36,54 @@ def ruling_payload(**overrides):
 class StorytellerTests(unittest.TestCase):
     def setUp(self):
         self.model = StubModel(
-            [
-                ruling_payload(),
-                {"narration": "She turns her back.", "hints": ["Try the thorns."]},
-            ]
+            [ruling_payload(), {"narration": "She turns her back.", "hints": ["Try the thorns."]}]
         )
         self.storyteller = Storyteller(FOX, model=self.model)
 
-    def test_resolve_makes_two_calls_one_per_phase(self):
-        ruling, narration = self.storyteller.resolve(initial_state(FOX, "zh"), "say", "喂，乌鸦")
+    def test_resolve_makes_one_call_per_phase(self):
+        ruling, narration = self.storyteller.resolve(initial_state("zh"), "say", "喂，乌鸦")
         self.assertEqual(len(self.model.calls), 2)
         self.assertEqual(ruling.outcome, "failure")
         self.assertEqual(narration.text, "She turns her back.")
         self.assertIn("phase 1 (ruling)", self.model.calls[0]["system"])
         self.assertIn("phase 2 (narration)", self.model.calls[1]["system"])
 
-    def test_prompts_carry_engine_skill_and_case_canon(self):
-        self.storyteller.resolve(initial_state(FOX), "do", "climb the tree")
-        system = self.model.calls[0]["system"]
-        self.assertIn(FOX.instructions, system)
-        self.assertIn(FOX.world, system)
+    def test_the_prompt_carries_the_world_in_the_session_language(self):
+        self.storyteller.resolve(initial_state("zh"), "do", "拨开荆棘")
+        for call in self.model.calls:
+            self.assertIn(FOX.world("zh"), call["system"])
+            self.assertIn("狐狸", call["system"])
+            self.assertIn("The story language is zh", call["system"])
 
-    def test_ruling_is_handed_to_the_narration_phase(self):
-        self.storyteller.resolve(initial_state(FOX), "do", "climb the tree")
+    def test_the_ruling_is_handed_to_the_narration_phase(self):
+        self.storyteller.resolve(initial_state(), "do", "climb the tree")
         payload = json.loads(self.model.calls[1]["user"].split("\n", 1)[1])
         self.assertEqual(payload["ruling"]["outcome"], "failure")
-        self.assertEqual(payload["ruling"]["meters"], {"trust": 0, "insight": 1})
         self.assertEqual(payload["action"], {"type": "do", "text": "climb the tree"})
 
-    def test_state_and_case_reach_the_model(self):
-        self.storyteller.resolve(initial_state(FOX, "zh"), "say", "你好")
-        payload = json.loads(self.model.calls[0]["user"].split("\n", 1)[1])
-        self.assertEqual(payload["state"]["language"], "zh")
-        self.assertEqual(payload["state"]["clock"]["remainingUnits"], 6)
-        self.assertEqual(payload["state"]["meters"], {"trust": 0, "insight": 0})
-        self.assertEqual(payload["case"]["player_character"], "the fox")
+    def test_another_case_uses_its_own_world(self):
+        model = StubModel([ruling_payload(), {"narration": "You wait."}])
+        Storyteller(CINDERELLA, model=model).resolve(initial_state("en"), "do", "wait")
+        self.assertIn(CINDERELLA.world("en"), model.calls[0]["system"])
+        self.assertIn("Cinderella", model.calls[0]["system"])
 
-    def test_clockless_case_sends_null_clock(self):
-        with tempfile.TemporaryDirectory() as directory:
-            case = Case.load(write_case(Path(directory)))
-        model = StubModel([ruling_payload(meters={}), {"narration": "You wait."}])
-        Storyteller(case, model=model).resolve(initial_state(case), "do", "wait")
-        payload = json.loads(model.calls[0]["user"].split("\n", 1)[1])
-        self.assertIsNone(payload["state"]["clock"])
-
-    def test_unusable_ruling_is_rejected(self):
-        model = StubModel([{"outcome": "bogus", "time_cost": 1, "scene": "x"}])
+    def test_an_unusable_ruling_is_rejected(self):
+        model = StubModel([{"outcome": "bogus", "scene": "x"}])
+        storyteller = Storyteller(FOX, model=model)
         with self.assertRaises(RulingError):
-            Storyteller(FOX, model=model).rule({"action": {"type": "do", "text": "x"}})
+            storyteller.rule("system", {"action": {"type": "do", "text": "x"}})
 
-    def test_unusable_narration_is_rejected(self):
+    def test_an_unusable_narration_is_rejected(self):
         model = StubModel([{"narration": ""}])
+        storyteller = Storyteller(FOX, model=model)
         with self.assertRaises(RulingError):
-            Storyteller(FOX, model=model).narrate(
+            storyteller.narrate(
+                "system",
                 {"action": {"type": "do", "text": "x"}},
-                Ruling.from_dict(ruling_payload(), FOX),
+                Ruling.from_dict(ruling_payload()),
             )
 
-    def test_opening_comes_from_the_case(self):
+    def test_the_opening_comes_from_the_case(self):
         self.assertEqual(self.storyteller.opening("zh"), FOX.opening("zh"))
 
 

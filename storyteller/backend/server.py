@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 if __package__ in {None, ""}:  # Allow `python backend/server.py` from the project root.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.case import Case, CaseError
+from backend.case import LANGUAGES, Case, CaseError
 from backend.model import ConfigurationError, ModelError, load_env_local
 from backend.session import RulingError, StoryState, apply_turn, initial_state
 from backend.storyteller import Storyteller
@@ -27,7 +27,6 @@ MAX_REQUEST_BYTES = 8192
 API_PATHS = ("/api/session", "/api/session/reset", "/api/turn")
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CASE_ROOT = REPOSITORY_ROOT / "cases"
-LANGUAGES = frozenset({"en", "zh"})
 
 
 class SessionNotFound(LookupError):
@@ -46,9 +45,9 @@ class SessionRegistry:
         self._states: dict[str, StoryState] = {}
         self._busy: set[str] = set()
 
-    def create(self, case: Case, language: str) -> tuple[str, StoryState]:
+    def create(self, language: str) -> tuple[str, StoryState]:
         session_id = uuid.uuid4().hex
-        state = initial_state(case, language)
+        state = initial_state(language)
         with self._lock:
             self._states[session_id] = state
         return session_id, state
@@ -163,7 +162,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         if language not in LANGUAGES:
             self._send_json(400, {"error": "language must be en or zh."})
             return
-        session_id, state = self.sessions.create(self.case, language)
+        session_id, state = self.sessions.create(language)
         self._send_json(
             201,
             {
@@ -171,10 +170,10 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                 "case": {
                     "id": self.case.id,
                     "title": dict(self.case.titles),
-                    "playerCharacter": self.case.character_name(language),
+                    "player": dict(self.case.players),
                 },
-                "opening": {"text": self.case.opening(language)},
-                "playerState": state.to_wire(self.case),
+                "opening": self.case.opening(language),
+                "playerState": state.to_wire(),
             },
         )
 
@@ -221,16 +220,9 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(409, {"error": "The story is still answering. Wait a moment."})
             return
 
-        if before.ended:
-            self.sessions.release(session_id)
-            self._send_json(409, {"error": "This story has ended. Start a new one."})
-            return
-
         try:
             ruling, narration = self.storyteller.resolve(before, input_type, text.strip())
-            after, events = apply_turn(
-                before, self.case, input_type, text.strip(), ruling, narration
-            )
+            after = apply_turn(before, input_type, text.strip(), ruling, narration)
         except ConfigurationError:
             self.sessions.release(session_id)
             self._send_json(
@@ -259,8 +251,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
                 "narration": narration.text,
                 "hints": list(narration.hints),
                 "outcome": ruling.outcome,
-                "events": list(events),
-                "playerState": after.to_wire(self.case),
+                "playerState": after.to_wire(),
             },
         )
 
@@ -269,7 +260,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
         messages = {
             401: "The story API key was rejected. Check DEEPSEEK_API_KEY and restart.",
             402: "The story API account has no balance. Top it up and try again.",
-            429: "The Storyteller is busy. Wait a moment and try again.",
+            429: "The storyteller is busy. Wait a moment and try again.",
         }
         status = 503 if error.retryable or error.status_code in {401, 402} else 502
         self._send_json(
@@ -277,7 +268,7 @@ class StoryRequestHandler(SimpleHTTPRequestHandler):
             {
                 "error": messages.get(
                     error.status_code,
-                    "The Storyteller cannot answer right now. Check the server terminal.",
+                    "The storyteller cannot answer right now. Check the server terminal.",
                 )
             },
         )

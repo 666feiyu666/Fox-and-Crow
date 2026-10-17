@@ -7,53 +7,32 @@
       languageLabel: "中文",
       switchLanguage: "Switch language",
       youAre: "You are {name}",
-      day: "Day {n}",
       turnLabel: "Turn {n}",
-      morning: "morning",
-      afternoon: "afternoon",
-      evening: "evening",
-      remaining: "of the day left",
       say: "Say",
       do: "Do",
       placeholderSay: "One line you say…",
       placeholderDo: "One action you attempt…",
       send: "Send",
-      thinking: "The Storyteller is judging your line…",
+      thinking: "The storyteller is thinking…",
       tryNext: "Could try",
-      newMorning: "Another morning",
-      dayClosed: "The day ends",
-      endingTitle: "The story has ended",
-      endingText: "Start a new story to play again.",
-      ended: "This story has ended. Restart to begin a new one.",
       error: "The story could not continue. Try again.",
-      note:
-        "A storyteller reads each line and decides what it changes. Nothing is scripted in advance.",
+      note: "Nothing is scripted. Every line you write is answered by the storyteller.",
     },
     zh: {
       restart: "重新开始",
       languageLabel: "English",
       switchLanguage: "切换语言",
       youAre: "你扮演{name}",
-      day: "第{n}天",
       turnLabel: "第 {n} 轮",
-      morning: "清晨",
-      afternoon: "午后",
-      evening: "黄昏",
-      remaining: "日内剩余时间",
       say: "说",
       do: "做",
       placeholderSay: "你说一句话……",
       placeholderDo: "你尝试一个动作……",
       send: "继续",
-      thinking: "讲故事的人正在裁定你这一句……",
+      thinking: "讲故事的人正在想……",
       tryNext: "可以试试",
-      newMorning: "又一个清晨",
-      dayClosed: "这一天结束了",
-      endingTitle: "故事结束了",
-      endingText: "重新开始，可以再玩一次。",
-      ended: "这个故事已经结束，重新开始才能继续。",
       error: "故事暂时无法继续，请再试一次。",
-      note: "讲故事的人读你写的每一句，再决定它改变了什么。故事没有任何预写剧本。",
+      note: "没有任何预写剧本。你写的每一句，都会由讲故事的人接着讲下去。",
     },
   };
 
@@ -62,13 +41,7 @@
   const sendButton = document.getElementById("send");
   const message = document.getElementById("message");
   const hints = document.getElementById("hints");
-  const ending = document.getElementById("ending");
-  const endingTitle = document.getElementById("ending-title");
-  const endingText = document.getElementById("ending-text");
-  const dayLabel = document.getElementById("day-label");
-  const phaseLabel = document.getElementById("phase-label");
-  const clock = document.getElementById("clock");
-  const remainingLabel = document.getElementById("remaining-label");
+  const turnLabel = document.getElementById("turn-label");
   const restartButton = document.getElementById("restart");
   const languageButton = document.getElementById("language");
   const note = document.getElementById("note");
@@ -83,7 +56,7 @@
   let busy = false;
   let hasTurns = false;
   let messageKey = null;
-  let state = { turn: 0, day: 1, hasClock: false, ended: false };
+  let turn = 0;
 
   function t(key, vars) {
     const template = I18N[language][key] ?? I18N.en[key] ?? key;
@@ -104,20 +77,24 @@
 
   function setBusy(value) {
     busy = value;
-    sendButton.disabled = value || state.ended;
-    actionBox.disabled = value || state.ended;
+    sendButton.disabled = value;
+    actionBox.disabled = value;
     modeButtons.forEach((button) => {
-      button.disabled = value || state.ended;
+      button.disabled = value;
     });
+  }
+
+  function caseText(table) {
+    return (table && (table[language] || table.en)) || "";
   }
 
   function applyCase() {
     if (!caseInfo) {
       return;
     }
-    const title = caseInfo.title?.[language] || caseInfo.title?.en || "";
+    const title = caseText(caseInfo.title);
     storyTitle.textContent = title;
-    subtitle.textContent = t("youAre", { name: caseInfo.playerCharacter });
+    subtitle.textContent = t("youAre", { name: caseText(caseInfo.player) });
     document.title = title;
   }
 
@@ -133,41 +110,14 @@
       button.textContent = fromTable(button.dataset.mode === "say" ? "say" : "do");
       button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
     });
-    endingTitle.textContent = t("endingTitle");
-    endingText.textContent = t("endingText");
     applyCase();
-    renderStatus();
-    if (state.ended) {
-      setMessage("ended");
-    } else if (messageKey) {
+    turnLabel.textContent = t("turnLabel", { n: turn });
+    if (messageKey) {
       message.textContent = t(messageKey);
     }
   }
 
-  function renderStatus() {
-    if (state.hasClock) {
-      dayLabel.textContent = t("day", { n: state.day });
-      phaseLabel.textContent = t(state.phase);
-      phaseLabel.hidden = false;
-      clock.hidden = false;
-      clock.replaceChildren(
-        ...Array.from({ length: state.totalUnits }, (_, index) => {
-          const pip = document.createElement("span");
-          pip.className = index < state.elapsedUnits ? "pip used" : "pip";
-          return pip;
-        }),
-      );
-      remainingLabel.textContent = `${state.remainingUnits} / ${state.totalUnits} ${t("remaining")}`;
-      return;
-    }
-    dayLabel.textContent = t("turnLabel", { n: state.turn });
-    phaseLabel.hidden = true;
-    clock.hidden = true;
-    clock.replaceChildren();
-    remainingLabel.textContent = "";
-  }
-
-  function addBlock(className) {
+  function addEntry(className) {
     const article = document.createElement("article");
     article.className = `entry ${className}`;
     log.appendChild(article);
@@ -187,16 +137,15 @@
   }
 
   function addOpening(text) {
-    const article = addBlock("opening");
+    const article = addEntry("opening");
     const body = document.createElement("div");
     body.className = "narration";
     renderParagraphs(body, text);
     article.appendChild(body);
-    log.appendChild(article);
   }
 
   function addAction(type, text) {
-    const article = addBlock("turn");
+    const article = addEntry("turn");
     const line = document.createElement("p");
     line.className = "action";
     const tag = document.createElement("span");
@@ -207,18 +156,11 @@
   }
 
   function addNarration(text) {
-    const article = addBlock("turn");
+    const article = addEntry("turn");
     const body = document.createElement("div");
     body.className = "narration";
     renderParagraphs(body, text);
     article.appendChild(body);
-  }
-
-  function addDivider(text) {
-    const divider = document.createElement("div");
-    divider.className = "divider";
-    divider.textContent = text;
-    log.appendChild(divider);
   }
 
   function setHints(items) {
@@ -234,17 +176,6 @@
         return button;
       }),
     );
-  }
-
-  function showEnding() {
-    ending.hidden = false;
-    setHints([]);
-    setMessage("ended");
-    sendButton.disabled = true;
-    actionBox.disabled = true;
-    modeButtons.forEach((button) => {
-      button.disabled = true;
-    });
   }
 
   async function request(path, body) {
@@ -275,16 +206,16 @@
   async function start() {
     log.replaceChildren();
     hints.replaceChildren();
-    ending.hidden = true;
     hasTurns = false;
+    turn = 0;
     setMessage(null);
     setBusy(true);
     try {
       const data = await request("/api/session", { language });
       sessionId = data.sessionId;
       caseInfo = data.case;
-      state = data.playerState;
-      addOpening(data.opening.text);
+      turn = data.playerState.turn;
+      addOpening(data.opening);
       paintChrome();
     } catch (error) {
       setMessage(error.key || null, error.message || t("error"));
@@ -295,7 +226,7 @@
   }
 
   async function takeTurn() {
-    if (busy || state.ended || !sessionId) {
+    if (busy || !sessionId) {
       return;
     }
     const text = actionBox.value.trim();
@@ -310,7 +241,7 @@
     setMessage("thinking");
     setHints([]);
     addAction(chosenType, text);
-    const pending = addBlock("pending");
+    const pending = addEntry("pending");
     const pendingBody = document.createElement("div");
     pendingBody.className = "narration";
     pendingBody.textContent = t("thinking");
@@ -319,30 +250,18 @@
     try {
       const data = await request("/api/turn", { sessionId, type: chosenType, text });
       pending.remove();
-      const events = data.events || [];
-      if (events.includes("day_reset")) {
-        addDivider(t("newMorning"));
-      }
-      if (events.includes("day_closed")) {
-        addDivider(t("dayClosed"));
-      }
       addNarration(data.narration);
-      state = data.playerState;
+      turn = data.playerState.turn;
       hasTurns = true;
-      renderStatus();
+      turnLabel.textContent = t("turnLabel", { n: turn });
       setHints(data.hints);
       setMessage(null);
-      if (state.ended) {
-        showEnding();
-      }
     } catch (error) {
       pending.remove();
       setMessage(error.key || null, error.message || t("error"));
     } finally {
       setBusy(false);
-      if (!state.ended) {
-        actionBox.focus();
-      }
+      actionBox.focus();
     }
   }
 

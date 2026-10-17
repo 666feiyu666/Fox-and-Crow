@@ -1,47 +1,48 @@
 # Cinderella
 
-The second case for the Storyteller agent. Where Fox-and-Crow tests judgement
-inside a repeating day, Cinderella removes the mechanism entirely: there is no
-clock, no reset, and no rule that says when the story is over. The Storyteller has
-to decide, turn by turn, what a servant girl's words and choices do to a household
-that is not built to hear her — and it has to recognise when the story has
-actually ended.
+A playable story built on the Perrault tale. You are Cinderella: the work of the
+house is yours, the comfort of it is not, and the palace has just announced a ball.
+There is a godmother who can give you one evening, a stepmother who will not simply
+be told no, and a prince who has never had a reason to look past a dress.
 
-That difference is the point. Fox-and-Crow gives the agent a machine (six units,
-a loop, trust that resets). Cinderella gives it only a world, two meters, and a
-question, so the case tests whether the agent can carry causality, character, and
-closure without a mechanism holding them up.
+Nothing is scripted. Every line you say or action you attempt is handed to the
+storyteller, which decides what it changes in that house and at that court, and
+continues the story.
+
+## What the player is given
+
+- **Opening** — `opening.en.md` / `opening.zh.md`: the first passage, before the
+  player has done anything.
+- **Role** — Cinderella (`Cinderella` / `灰姑娘`), named in `case.json`.
+- **World** — `world.en.md` / `world.zh.md`: the canon the storyteller judges
+  against — the household, the palace, the magic and its midnight limit, what is
+  already true, and what a satisfying ending would touch on.
 
 ## Files
 
-| File | Role |
+| File | Purpose |
 | --- | --- |
-| `case.json` | Case record plus the `storyteller` block: bilingual title, player character, meters (`resolve`, `bond`), ending floor |
-| `world.md` | Canon given to the model: cast, places, objects, rules, prohibitions, mechanics |
-| `openings.json` | The first passage, in English and Chinese |
+| `case.json` | Story id, bilingual title, and the character the player plays |
+| `world.en.md`, `world.zh.md` | The same canon written in each language |
+| `opening.en.md`, `opening.zh.md` | The first passage in each language |
 
-No `clock` is declared, so the engine spends no day units and never resets; the
-page shows turns instead of a day clock.
-
-## What the case asks of the agent
-
-- Whether a prince's attention, the slipper, and the ball are used as routes or as
-  answers.
-- Whether the stepmother's authority is treated as a social fact that has to be
-  worked around rather than a villain to be defeated.
-- Whether `resolve` and `bond` move from what actually happened, not from what
-  would make a better scene.
-- Whether the ending is claimed because the situation changed, not because the
-  scene felt finished.
+Every file exists in both languages, and a session picks one: the opening,
+narration, hints, and the storyteller's own notes are all written in that
+language, with no mixing.
 
 ## Run it
 
 ```bash
+cd storyteller
 python backend/server.py --case cinderella
 ```
 
-From the repository root, `python storyteller/backend/server.py --case cinderella`
-works too. The case id and title are printed at startup and reported by `/health`.
+Then open `http://127.0.0.1:8000` and play. The language button in the top right
+restarts the story in the other language.
 
-This case is a test input for the agent, not evidence that the agent has been
-validated: passing tests say nothing about narrative quality.
+## What this case is for
+
+It is a test input for the storyteller agent: a world where the obvious rescue is
+available and the interesting question is whether the agent lets Cinderella earn
+something better. Passing tests say nothing about whether the story it tells is
+good.

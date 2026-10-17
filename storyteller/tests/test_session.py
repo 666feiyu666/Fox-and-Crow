@@ -1,183 +1,113 @@
-import tempfile
 import unittest
 from pathlib import Path
 
 from backend.case import Case
 from backend.session import (
+    MEMORY_TURNS,
     Narration,
     Ruling,
     RulingError,
     apply_turn,
-    ending_allowed,
     initial_state,
 )
-from tests.test_case import CASE_ROOT, write_case
 
+CASE_ROOT = Path(__file__).resolve().parents[2] / "cases"
 FOX = Case.load(CASE_ROOT / "fox-and-crow")
 
 
-def ruling(case, **overrides):
-    payload = {
-        "outcome": "partial",
-        "time_cost": 1,
-        "meters": {},
-        "facts": [],
-        "scene": "A private plan.",
-        "ending": "none",
-    }
+def ruling(**overrides):
+    payload = {'outcome': "partial", "facts": [], "scene": "A private plan."}
     payload.update(overrides)
-    return Ruling.from_dict(payload, case)
+    return Ruling.from_dict(payload)
 
 
 def narration(text="a line"):
     return Narration.from_dict({"narration": f"You act: {text}", "hints": ["Wait."]})
 
 
-def say(state, case=FOX, text="a line", **overrides):
-    return apply_turn(state, case, "say", text, ruling(case, **overrides), narration(text))
+def take(state, kind="say", text="a line", **overrides):
+    return apply_turn(state, kind, text, ruling(**overrides), narration(text))
 
 
-class RulingParsingTests(unittest.TestCase):
-    def test_accepts_well_formed_ruling(self):
-        parsed = ruling(FOX, facts=["The crow blinked."], meters={"trust": 1})
+class RulingTests(unittest.TestCase):
+    def test_accepts_a_well_formed_ruling(self):
+        parsed = ruling(facts=["The crow blinked."])
         self.assertEqual(parsed.outcome, "partial")
         self.assertEqual(parsed.facts, ("The crow blinked.",))
-        self.assertEqual(dict(parsed.meters), {"trust": 1})
+        self.assertEqual(set(parsed.to_dict()), {"outcome", "facts", "scene"})
 
-    def test_rejects_unknown_outcome_and_ending(self):
+    def test_rejects_an_unknown_outcome(self):
         with self.assertRaises(RulingError):
-            ruling(FOX, outcome="triumph")
-        with self.assertRaises(RulingError):
-            ruling(FOX, ending="loop_broken")
-
-    def test_rejects_non_integer_numbers(self):
-        with self.assertRaises(RulingError):
-            ruling(FOX, time_cost="2")
-        with self.assertRaises(RulingError):
-            ruling(FOX, meters={"trust": True})
-
-    def test_clamps_time_and_meter_deltas(self):
-        parsed = ruling(FOX, time_cost=99, meters={"trust": 9, "insight": -9})
-        self.assertEqual(parsed.time_cost, 3)
-        self.assertEqual(dict(parsed.meters), {"trust": 2, "insight": -2})
-
-    def test_ignores_meters_the_case_does_not_keep(self):
-        parsed = ruling(FOX, meters={"trust": 1, "courage": 2})
-        self.assertEqual(dict(parsed.meters), {"trust": 1})
+            ruling(outcome="triumph")
 
     def test_requires_a_scene(self):
         with self.assertRaises(RulingError):
-            ruling(FOX, scene="   ")
+            ruling(scene="   ")
+
+    def test_keeps_at_most_three_facts(self):
+        parsed = ruling(facts=["a", "b", "c", "d"])
+        self.assertEqual(len(parsed.facts), 3)
+
+    def test_ignores_unrelated_numbers(self):
+        parsed = Ruling.from_dict(
+            {"outcome": "success", "scene": "x", "meters": {"trust": 2}, "time_cost": 3}
+        )
+        self.assertEqual(parsed.outcome, "success")
 
 
-class ClocklessCaseTests(unittest.TestCase):
-    def setUp(self):
-        with tempfile.TemporaryDirectory() as directory:
-            self.case = Case.load(write_case(Path(directory)))
-        self.state = initial_state(self.case)
-
-    def test_time_cost_is_forced_to_zero(self):
-        self.assertEqual(ruling(self.case, time_cost=3).time_cost, 0)
-
-    def test_turns_never_advance_elapsed_time(self):
-        state, events = say(self.state, self.case, time_cost=3)
-        self.assertEqual(events, ())
-        self.assertEqual(state.elapsed, 0)
-        self.assertEqual(state.day, 1)
-        self.assertEqual(state.turn, 1)
-
-    def test_wire_has_no_clock(self):
-        wire = self.state.to_wire(self.case)
-        self.assertFalse(wire["hasClock"])
-        self.assertNotIn("remainingUnits", wire)
+class NarrationTests(unittest.TestCase):
+    def test_requires_text_and_limits_hints(self):
+        self.assertEqual(Narration.from_dict({"narration": "You wait."}).hints, ())
+        with self.assertRaises(RulingError):
+            Narration.from_dict({"narration": "   "})
+        hints = Narration.from_dict(
+            {"narration": "You wait.", "hints": ["a", "b", "c", "d"]}
+        ).hints
+        self.assertEqual(len(hints), 3)
 
 
 class TurnTests(unittest.TestCase):
-    def setUp(self):
-        self.state = initial_state(FOX)
-
-    def test_turn_records_action_and_narration(self):
-        state, events = say(self.state, text="You look well fed.")
-        self.assertEqual(events, ())
+    def test_a_turn_records_what_the_player_and_the_story_said(self):
+        state = take(initial_state("zh"), text="你看着乌鸦。")
         self.assertEqual(state.turn, 1)
-        self.assertEqual(state.turns[0].player_input, "You look well fed.")
-        self.assertEqual(state.turns[0].narration, "You act: You look well fed.")
+        self.assertEqual(state.language, "zh")
+        self.assertEqual(state.turns[0].player_input, "你看着乌鸦。")
+        self.assertEqual(state.turns[0].narration, "You act: 你看着乌鸦。")
 
-    def test_meters_accumulate_within_case_bounds(self):
-        state = self.state
-        for _ in range(5):
-            state, _ = say(state, time_cost=0, meters={"trust": 2, "insight": 2})
-        self.assertEqual(state.meters["trust"], 6)
-        self.assertEqual(state.meters["insight"], 6)
-
-    def test_day_reset_restores_reset_meters_only(self):
-        state, _ = say(self.state, time_cost=3, meters={"trust": 2, "insight": 2}, facts=["A chain."])
-        state, events = say(state, time_cost=3)
-        self.assertEqual(events, ("day_reset",))
-        self.assertEqual(state.day, 2)
-        self.assertEqual(state.elapsed, 0)
-        self.assertEqual(state.meters["trust"], 0)
-        self.assertEqual(state.meters["insight"], 2)
-        self.assertEqual(state.facts, ("A chain.",))
-
-    def test_elapsed_stays_inside_the_day(self):
-        state = self.state
-        for _ in range(6):
-            state, _ = say(state, time_cost=3)
-        self.assertLess(state.elapsed, 6)
-
-    def test_facts_are_deduplicated(self):
-        state = self.state
+    def test_facts_accumulate_without_duplicates(self):
+        state = initial_state()
         for _ in range(2):
-            state, _ = say(state, time_cost=0, facts=["The bridge is down."])
+            state = take(state, facts=["The bridge is down."])
         self.assertEqual(state.facts, ("The bridge is down.",))
 
-    def test_rejects_unknown_input_type(self):
+    def test_only_recent_turns_are_kept(self):
+        state = initial_state()
+        for index in range(MEMORY_TURNS + 3):
+            state = take(state, text=f"line {index}")
+        self.assertEqual(len(state.turns), MEMORY_TURNS)
+        self.assertEqual(state.turn, MEMORY_TURNS + 3)
+        self.assertEqual(state.turns[-1].player_input, f"line {MEMORY_TURNS + 2}")
+
+    def test_rejects_an_unknown_input_type(self):
         with self.assertRaises(ValueError):
-            apply_turn(
-                self.state,
-                FOX,
-                "shout",
-                "hey",
-                ruling(FOX),
-                narration(),
-            )
+            apply_turn(initial_state(), "shout", "hey", ruling(), narration())
+
+    def test_wire_carries_only_language_and_turn(self):
+        wire = take(initial_state("en")).to_wire()
+        self.assertEqual(wire, {"language": "en", "turn": 1})
 
 
-class EndingTests(unittest.TestCase):
-    def _earned_turns(self):
-        state = initial_state(FOX)
-        for _ in range(FOX.ending.min_turns - 1):
-            state, _ = say(state, time_cost=0, meters={"trust": 1, "insight": 1})
-        return state
-
-    def test_ending_requires_the_declared_thresholds(self):
-        self.assertFalse(ending_allowed(FOX, 1, {"trust": 6, "insight": 6}))
-        self.assertFalse(ending_allowed(FOX, 20, {"trust": 0, "insight": 0}))
-
-    def test_declared_ending_is_refused_before_it_is_earned(self):
-        state, events = say(initial_state(FOX), ending="end")
-        self.assertEqual(events, ("ending_refused",))
-        self.assertFalse(state.ended)
-
-    def test_earned_ending_is_accepted_and_blocks_further_turns(self):
-        state = self._earned_turns()
-        state, events = say(state, ending="end")
-        self.assertEqual(events, ("story_ended",))
-        self.assertTrue(state.ended)
-        with self.assertRaises(RulingError):
-            say(state)
-
-    def test_clockless_case_still_requires_min_turns(self):
-        with tempfile.TemporaryDirectory() as directory:
-            case = Case.load(write_case(Path(directory)))
-        state = initial_state(case)
-        state, events = say(state, case, ending="end")
-        self.assertEqual(events, ("ending_refused",))
-        for _ in range(case.ending.min_turns - 1):
-            state, _ = say(state, case)
-        state, events = say(state, case, ending="end")
-        self.assertEqual(events, ("story_ended",))
+class ContextTests(unittest.TestCase):
+    def test_context_gives_the_model_the_case_the_state_and_the_action(self):
+        state = take(initial_state("zh"), text="走开")
+        context = state.to_agent_context(FOX, "say", "走开")
+        self.assertEqual(context["case"]["player"], "狐狸")
+        self.assertEqual(context["state"]["language"], "zh")
+        self.assertEqual(context["state"]["facts"], [])
+        self.assertEqual(context["action"], {"type": "say", "text": "走开"})
+        self.assertEqual(len(context["recent_turns"]), 1)
+        self.assertNotIn("meters", context["state"])
+        self.assertNotIn("clock", context["state"])
 
 
 if __name__ == "__main__":

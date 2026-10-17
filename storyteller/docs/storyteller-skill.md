@@ -1,81 +1,62 @@
 # The Storyteller skill
 
 `storyteller/skills/storyteller/SKILL.md` is the agent: one file, loaded at
-startup and sent with every request. It describes a Storyteller who is
-story-independent — an omniscient dungeon master who judges an action against the
-world it is given.
+startup and sent with every request. It describes a storyteller who is
+story-independent — someone who holds the whole world in view and answers the
+player's line by showing what it changes.
 
-The world itself is not in the skill. It arrives from the case, in `world.md`,
-on the same request. That split is what makes one agent play many stories.
+The world is not in the skill. It arrives from the case, in `world.<lang>.md`, on
+the same request, written in the session's language. That split is what lets one
+agent tell many stories.
 
 ## The role
 
-The Storyteller is an omniscient dungeon master, not a narrator who follows the
-player. It knows what the case's canon says about everyone's goals, secrets, and
-limits. The player speaks and acts only as one character.
-
-That asymmetry is the design: the player has one limited viewpoint, and the
-Storyteller decides what that viewpoint can change. The player proposes; the
-Storyteller disposes.
+The storyteller knows what the case's canon says about everyone's goals, secrets,
+and limits. The player knows only what one character has seen and been told, and
+can do only one thing per turn. That asymmetry is the design: the player proposes,
+the storyteller answers.
 
 ## Why two phases
 
 A single model call tends to let the writing decide the outcome: the passage
-sounds good, so the action succeeds. Separating the calls makes judgement explicit
-and inspectable:
+sounds good, so the action succeeds. Separating the calls keeps judgement explicit:
 
-1. **Ruling** — the Storyteller answers in structured JSON: `outcome`
-   (`success`, `partial`, `failure`, `blocked`), `time_cost` (0–3 units when the
-   case has a clock), `meters` (deltas for the meters the case declares), new
-   `facts`, a private `scene` plan, and `ending`. None of it reaches the player.
-2. **Narration** — a second call receives the ruling marked final and writes two
-   to four sentences in the session language, plus two or three optional next
-   actions.
+1. **Ruling** — the storyteller answers in small JSON: `outcome`
+   (`success`, `partial`, `failure`, `blocked`), a private `scene` plan, and any
+   facts the turn fixes. None of it reaches the player.
+2. **Narration** — a second call receives the ruling marked final and writes two to
+   five sentences, plus two or three optional next actions.
 
-The runtime validates the ruling before any prose exists, so a malformed or
-absurd judgement is rejected instead of being written into the story.
+The runtime validates the ruling before any prose exists, so a malformed or absurd
+judgement is rejected instead of being written into the story.
 
-## The judging procedure
+## What the skill asks for
 
-`SKILL.md` fixes nine steps, in order: intent, permission, outcome, price,
-meters, facts, scene, ending. Three carry most of the design weight:
+- Judge the aim, not the wording.
+- Decide whether the world even allows the attempt, and say so through
+  consequence rather than refusal.
+- Failure always produces information, a cost, or a changed situation.
+- Never speak for the player's character beyond what they wrote.
+- Never invent named characters, powers, or rules the canon does not support.
+- Keep the other characters' own goals intact; they are not devices.
 
-- **Permission** asks whether the world allows the attempt at all. What the
-  character cannot physically do, cannot know, or cannot reach is refused here.
-- **Price** makes time a consequence rather than a clock, in the cases that have
-  a clock at all.
-- **Meters** are named by the state, not by the model. A ruling may move only the
-  meters the case declares, by at most 2 per turn.
-
-## State the Storyteller may not invent
-
-The Storyteller sees the current meters as true numbers, the last eight turns, and
-the established facts. It proposes deltas; the runtime clamps them and owns the
-totals, the clock, the loop, and the ending.
-
-Three rules are the runtime's, not the skill's:
-
-- Meter ranges and per-turn limits come from `case.json`.
-- A declared ending is refused until the case's turn floor and meter thresholds
-  are met.
-- Facts accumulate and are never silently contradicted.
-
-They are written down in `ARCHITECTURE.md` so a reader can tell which guarantees
-are prompt-level and which are code-level.
+There are no meters, scores, clocks, or ending conditions. The skill tells the
+storyteller when a story has probably run its course, but the decision is theirs,
+and nothing in the runtime overrides it.
 
 ## Language
 
-`narration` and `hints` follow `state.language` (`en` or `zh`). `scene` and `facts`
-stay in English because they are working notes for the next phase and the next
-turn, not text the player reads.
+Everything the model writes — `scene`, `facts`, `narration`, `hints` — is written
+in `state.language` (`en` or `zh`), and the canon it is given is the same
+language's version. A session never mixes languages.
 
 ## Changing a story or the engine
 
-- To change how any story is judged, edit `storyteller/skills/storyteller/SKILL.md`.
-- To change one story's canon or mechanics, edit files under its case directory:
-  `world.md` for canon, `case.json` for meters, clock, ending floor, and titles,
-  `openings.json` for the first passage.
-- To add a story, copy a case directory, rewrite those three files, and run
+- To change how any story is told, edit `storyteller/skills/storyteller/SKILL.md`.
+- To change one story, edit its case directory: `world.<lang>.md` for canon,
+  `opening.<lang>.md` for the first passage, `case.json` for the title and the
+  player's character. Both languages must be present.
+- To add a story, copy a case directory, rewrite those files, and run
   `python backend/server.py --case <name>`.
 - To change what the runtime guarantees, edit `backend/session.py` and its tests.
 

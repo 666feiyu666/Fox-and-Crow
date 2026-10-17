@@ -1,39 +1,46 @@
 # The Fox and the Crow
 
-The first Track B1 case for studying counterfactual alternative action
-generation and consequence projection. It is not a generic input contract for
-all story-level narrative techniques.
+A playable story built on Aesop's fable. You are the fox: hungry, proud, and used
+to getting what you want by talking. A crow sits above you with cheese in her
+beak. There is something in the thorn bush she cannot reach, and a road out of the
+forest that is not what it looks like.
 
-The bounded question is: what could the fox do if it does not use deception to
-obtain the cheese, and what might those alternatives change about subsequent
-events, endings, theme, and educational meaning?
+Nothing is scripted. Every line you say or action you attempt is handed to the
+storyteller, which decides what it changes out there and continues the story.
 
-`case.json` records the confirmed problem boundary. It deliberately does not
-list candidate strategies or expected meanings, because those would leak
-answers into an evaluation of the Agent's ability to imagine alternatives.
+## What the player is given
 
-## As a Storyteller case
+- **Opening** — `opening.en.md` / `opening.zh.md`: the first passage, before the
+  player has done anything.
+- **Role** — the fox (`the fox` / `狐狸`), named in `case.json`.
+- **World** — `world.en.md` / `world.zh.md`: the canon the storyteller judges
+  against — who these two are, what the forest allows, what is already true, and
+  what a satisfying ending would touch on.
 
-The `storyteller` block of `case.json` makes this case playable by the engine in
-`../../storyteller/`:
+## Files
 
-| File | Role |
+| File | Purpose |
 | --- | --- |
-| `case.json` → `storyteller` | Bilingual title, player character (`the fox` / `狐狸`), a six-unit day clock that loops, meters `trust` and `insight`, and an ending floor of eight turns with both meters at 3 |
-| `world.md` | Canon given to the model: cast, places, rules, prohibitions, and the meaning of each meter |
-| `openings.json` | The first passage, in English and Chinese |
+| `case.json` | Story id, bilingual title, and the character the player plays |
+| `world.en.md`, `world.zh.md` | The same canon written in each language |
+| `opening.en.md`, `opening.zh.md` | The first passage in each language |
 
-Run it with:
+Every file exists in both languages, and a session picks one: the opening,
+narration, hints, and the storyteller's own notes are all written in that
+language, with no mixing.
+
+## Run it
 
 ```bash
 cd storyteller
 python backend/server.py --case fox-and-crow
 ```
 
-This case gives the agent a machine — a repeating day, a price for every action,
-trust that resets each morning. That machinery is what the Cinderella case
-removes, so the two are useful together: one tests judgement inside a mechanism,
-the other without one.
+Then open `http://127.0.0.1:8000` and play. The language button in the top right
+restarts the story in the other language.
 
-This case is a test input for the agent, not evidence that a particular Agent
-solution has been validated.
+## What this case is for
+
+It is a test input for the storyteller agent: a small, well-known world where the
+interesting variable is what the agent does with a player who refuses the fable's
+usual trick. Passing tests say nothing about whether the story it tells is good.

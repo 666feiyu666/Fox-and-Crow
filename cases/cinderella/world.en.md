@@ -1,8 +1,4 @@
-# World canon — Cinderella: Beyond the Slipper
-
-This file is the story bible the Storyteller must obey. It is built on the
-public-domain Perrault tale. It is canon: nothing in a ruling may contradict it,
-and nothing may be added to it mid-story.
+# World — Cinderella
 
 ## Premise
 
@@ -106,24 +102,12 @@ the player's to decide.
 - Do not moralise, and do not end with a stated lesson.
 - Do not depict violence, self-harm, or humiliation in detail.
 
-## Mechanics declared for this case
+## Where this story is going
 
-This case has no clock. Turns do not consume a day, nothing resets, and the story
-does not loop. Two meters record what the world has come to think of her:
-
-- **Meter `resolve`** (range 0 to 6, starts at 1). How far Cinderella acts from
-  her own judgement rather than from others' instructions: speaking first,
-  setting terms, refusing, choosing her own purpose for the evening, deciding
-  what she wants after she gets what she wanted.
-- **Meter `bond`** (range −3 to 6, starts at 0). How far another person — at
-  first the prince, later anyone who matters — actually knows her: her name, her
-  work, her temper, her aims. Time spent together without honesty does not move
-  it. Being caught in a lie moves it down.
-
-**Ending.** Set `ending` to `end` when the evening's central question has been
-answered by what happened: Cinderella is known for who she is by someone whose
-knowing changes what she can do next, and her situation has actually changed
-through her own action. The slipper, the ball, and the prince are available
-routes, not required ones. If the night ends with the stepmother's household
-unchanged and Cinderella choosing to return to the ash, the story has not ended —
-it has only paused.
+Nothing here decides the ending; it only says what a satisfying one would touch on.
+The story has run its course when the evening's real question has been answered by
+what happened — when Cinderella is known for who she is by someone whose knowing
+changes what she can do next, and her situation has changed through her own
+action. The slipper, the ball, and the prince are available routes, not required
+ones. A night that ends with the household unchanged and Cinderella choosing to
+return to the ash has not ended; it has only paused.

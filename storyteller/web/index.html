@@ -6,7 +6,7 @@
     <title>Playable story</title>
     <meta
       name="description"
-      content="A playable story in which a storyteller judges every word and action."
+      content="A playable story told by a storyteller that answers every line you write."
     />
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
@@ -25,18 +25,10 @@
       </header>
 
       <div class="status" aria-live="polite">
-        <span id="day-label">Day 1</span>
-        <span id="phase-label">morning</span>
-        <span class="clock" id="clock" aria-hidden="true"></span>
-        <span id="remaining-label"></span>
+        <span id="turn-label"></span>
       </div>
 
       <main id="log" aria-live="polite" aria-label="Story"></main>
-
-      <section class="ending" id="ending" hidden>
-        <h2 id="ending-title">The loop has ended</h2>
-        <p id="ending-text"></p>
-      </section>
 
       <section class="composer" id="composer">
         <div class="mode" role="group" aria-label="Input mode">
@@ -49,7 +41,7 @@
             id="action"
             rows="1"
             maxlength="400"
-            placeholder="One line the fox says…"
+            placeholder="One line you say…"
             autocomplete="off"
           ></textarea>
           <button class="primary" id="send" type="button">Send</button>
@@ -58,10 +50,7 @@
         <p class="message" id="message" role="status"></p>
       </section>
 
-      <footer class="note" id="note">
-        A storyteller reads each line and decides what it changes. Nothing is
-        scripted in advance.
-      </footer>
+      <footer class="note" id="note"></footer>
     </div>
 
     <script src="app.js"></script>
